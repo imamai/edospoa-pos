@@ -1,0 +1,1293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Mejasan POS — Point of Sale</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --gold: #C9A84C;
+    --gold-light: #e8c96a;
+    --gold-dark: #a07c30;
+    --black: #0a0a0a;
+    --dark: #111111;
+    --dark2: #1a1a1a;
+    --dark3: #222222;
+    --surface: #181818;
+    --border: #2a2a2a;
+    --text: #f0ece4;
+    --text-muted: #888888;
+    --text-dim: #555555;
+    --red: #e05252;
+    --green: #4caf7d;
+    --blue: #4c8faf;
+    --r: 6px;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: 'Outfit', sans-serif;
+    background: var(--black);
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+  }
+
+  /* ── TOP BAR ── */
+  .topbar {
+    background: var(--dark);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    height: 58px;
+    flex-shrink: 0;
+    z-index: 100;
+  }
+  .logo-area { display: flex; align-items: center; gap: 14px; }
+  .logo-area img { height: 32px; filter: brightness(1.1); }
+  .logo-tagline { font-size: 10px; color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase; }
+  .topbar-right { display: flex; align-items: center; gap: 16px; }
+  .topbar-clock { font-family: 'DM Mono', monospace; font-size: 13px; color: var(--gold); letter-spacing: 1px; }
+  .cashier-badge {
+    background: var(--dark3);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .cashier-badge span { color: var(--gold); font-weight: 600; }
+
+  /* ── MAIN LAYOUT ── */
+  .main {
+    display: grid;
+    grid-template-columns: 1fr 400px;
+    flex: 1;
+    overflow: hidden;
+    gap: 0;
+  }
+
+  /* ── LEFT: PRODUCTS ── */
+  .products-panel {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-right: 1px solid var(--border);
+  }
+  .products-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+    background: var(--surface);
+  }
+  .search-box {
+    flex: 1;
+    background: var(--dark2);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 8px 14px 8px 36px;
+    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: border-color .2s;
+    position: relative;
+  }
+  .search-wrap { position: relative; flex: 1; }
+  .search-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); opacity: .4; }
+  .search-box:focus { border-color: var(--gold); }
+  .cat-tabs {
+    display: flex;
+    gap: 6px;
+    padding: 10px 18px;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    flex-shrink: 0;
+    background: var(--dark);
+    scrollbar-width: none;
+  }
+  .cat-tabs::-webkit-scrollbar { display: none; }
+  .cat-tab {
+    padding: 5px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    font-family: 'Outfit', sans-serif;
+    font-size: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all .18s;
+  }
+  .cat-tab.active, .cat-tab:hover {
+    background: var(--gold);
+    border-color: var(--gold);
+    color: var(--black);
+    font-weight: 600;
+  }
+  .products-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
+    gap: 10px;
+    padding: 14px;
+    overflow-y: auto;
+    align-content: start;
+  }
+  .products-grid::-webkit-scrollbar { width: 4px; }
+  .products-grid::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .product-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 14px 12px 12px;
+    cursor: pointer;
+    transition: all .18s;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    position: relative;
+    overflow: hidden;
+  }
+  .product-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--cat-color, var(--gold));
+    opacity: 0;
+    transition: opacity .18s;
+  }
+  .product-card:hover { border-color: var(--gold); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(201,168,76,.12); }
+  .product-card:hover::before { opacity: 1; }
+  .product-card:active { transform: scale(.97); }
+  .product-icon { font-size: 22px; line-height: 1; }
+  .product-name { font-size: 13px; font-weight: 600; color: var(--text); line-height: 1.3; }
+  .product-sub { font-size: 11px; color: var(--text-muted); }
+  .product-price { font-family: 'DM Mono', monospace; font-size: 13px; color: var(--gold); font-weight: 500; margin-top: auto; }
+  .product-badge {
+    position: absolute;
+    top: 6px; right: 6px;
+    background: var(--dark3);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 9px;
+    padding: 1px 5px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: .5px;
+  }
+
+  /* ── RIGHT: CART ── */
+  .cart-panel {
+    display: flex;
+    flex-direction: column;
+    background: var(--dark);
+    overflow: hidden;
+  }
+  .cart-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .cart-title { font-family: 'DM Serif Display', serif; font-size: 16px; color: var(--gold); }
+  .cart-count { background: var(--gold); color: var(--black); font-size: 11px; font-weight: 700; border-radius: 10px; padding: 1px 7px; }
+  .btn-clear { background: none; border: 1px solid var(--border); border-radius: var(--r); padding: 4px 10px; color: var(--text-dim); font-size: 11px; cursor: pointer; font-family: 'Outfit', sans-serif; transition: all .18s; }
+  .btn-clear:hover { border-color: var(--red); color: var(--red); }
+
+  .cart-items {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .cart-items::-webkit-scrollbar { width: 3px; }
+  .cart-items::-webkit-scrollbar-thumb { background: var(--border); }
+
+  .cart-empty {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-dim);
+    font-size: 13px;
+    gap: 10px;
+    padding: 20px;
+    text-align: center;
+  }
+  .cart-empty .empty-icon { font-size: 36px; opacity: .3; }
+
+  .cart-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 10px 12px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 6px;
+    animation: slideIn .15s ease;
+  }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
+  .ci-name { font-size: 13px; font-weight: 500; }
+  .ci-sub { font-size: 11px; color: var(--text-muted); }
+  .ci-price { font-family: 'DM Mono', monospace; font-size: 13px; color: var(--gold); text-align: right; }
+  .ci-controls { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+  .qty-btn { width: 22px; height: 22px; border-radius: 4px; border: 1px solid var(--border); background: var(--dark2); color: var(--text); font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .15s; }
+  .qty-btn:hover { border-color: var(--gold); color: var(--gold); }
+  .qty-val { font-family: 'DM Mono', monospace; font-size: 13px; min-width: 20px; text-align: center; }
+  .ci-remove { width: 22px; height: 22px; border-radius: 4px; border: 1px solid transparent; background: none; color: var(--text-dim); font-size: 14px; cursor: pointer; transition: all .15s; display: flex; align-items: center; justify-content: center; }
+  .ci-remove:hover { border-color: var(--red); color: var(--red); }
+  .ci-note { grid-column: 1/-1; }
+  .ci-note input {
+    width: 100%;
+    background: var(--dark2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: 'Outfit', sans-serif;
+    outline: none;
+  }
+  .ci-note input:focus { border-color: var(--gold); color: var(--text); }
+
+  /* ── TOTALS ── */
+  .cart-totals {
+    border-top: 1px solid var(--border);
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .total-row { display: flex; justify-content: space-between; font-size: 13px; }
+  .total-row.main { font-size: 18px; font-weight: 700; margin-top: 4px; border-top: 1px solid var(--border); padding-top: 8px; }
+  .total-row.main .amt { font-family: 'DM Mono', monospace; color: var(--gold); }
+  .total-row .lbl { color: var(--text-muted); }
+  .total-row .amt { font-family: 'DM Mono', monospace; }
+
+  /* ── CUSTOMER ── */
+  .customer-bar {
+    border-top: 1px solid var(--border);
+    padding: 10px 16px;
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .cust-input {
+    flex: 1;
+    background: var(--dark2);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 7px 12px;
+    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+    font-size: 13px;
+    outline: none;
+    transition: border-color .2s;
+  }
+  .cust-input:focus { border-color: var(--gold); }
+  .cust-input::placeholder { color: var(--text-dim); }
+
+  /* ── PAYMENT BUTTONS ── */
+  .pay-section {
+    padding: 10px 16px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .pay-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .btn-pay {
+    padding: 11px 10px;
+    border-radius: var(--r);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .18s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  .btn-pay:hover { border-color: var(--gold); color: var(--gold); }
+  .btn-mpesa {
+    background: #04a04a;
+    border-color: #04a04a;
+    color: #fff;
+    grid-column: 1 / -1;
+    padding: 13px;
+    font-size: 14px;
+  }
+  .btn-mpesa:hover { background: #038a3f; border-color: #038a3f; color: #fff; }
+  .mpesa-logo { font-size: 11px; font-weight: 700; letter-spacing: 1px; background: #fff; color: #04a04a; border-radius: 3px; padding: 1px 5px; }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.85);
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+    animation: fadeIn .2s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .modal {
+    background: var(--dark2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    width: 420px;
+    max-width: 95vw;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: popIn .2s cubic-bezier(.34,1.56,.64,1);
+  }
+  @keyframes popIn { from { opacity: 0; transform: scale(.9); } to { opacity: 1; transform: scale(1); } }
+  .modal-header {
+    padding: 18px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .modal-title { font-family: 'DM Serif Display', serif; font-size: 18px; color: var(--gold); }
+  .modal-close { background: none; border: none; color: var(--text-dim); font-size: 20px; cursor: pointer; line-height: 1; }
+  .modal-close:hover { color: var(--red); }
+  .modal-body { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+  .modal-footer { padding: 16px 20px; border-top: 1px solid var(--border); display: flex; gap: 10px; }
+
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); }
+  .form-input {
+    background: var(--dark3);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: border-color .2s;
+    width: 100%;
+  }
+  .form-input:focus { border-color: var(--gold); }
+  .form-select {
+    background: var(--dark3);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+    font-size: 14px;
+    outline: none;
+    width: 100%;
+  }
+  .form-select option { background: var(--dark2); }
+
+  .btn-primary {
+    flex: 1;
+    padding: 12px;
+    background: var(--gold);
+    border: none;
+    border-radius: var(--r);
+    color: var(--black);
+    font-family: 'Outfit', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all .18s;
+  }
+  .btn-primary:hover { background: var(--gold-light); }
+  .btn-secondary {
+    padding: 12px 20px;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    color: var(--text-muted);
+    font-family: 'Outfit', sans-serif;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all .18s;
+  }
+  .btn-secondary:hover { border-color: var(--text-muted); color: var(--text); }
+
+  /* ── STK STATUS ── */
+  .stk-status {
+    text-align: center;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+  .stk-phone-display {
+    font-family: 'DM Mono', monospace;
+    font-size: 22px;
+    color: var(--gold);
+    letter-spacing: 2px;
+  }
+  .stk-amount {
+    font-family: 'DM Serif Display', serif;
+    font-size: 28px;
+    color: var(--text);
+  }
+  .stk-spinner {
+    width: 44px; height: 44px;
+    border: 3px solid var(--border);
+    border-top-color: #04a04a;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .stk-msg { font-size: 13px; color: var(--text-muted); text-align: center; line-height: 1.6; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .dot-green { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .dot-red { background: var(--red); box-shadow: 0 0 6px var(--red); }
+  .dot-yellow { background: var(--gold); box-shadow: 0 0 6px var(--gold); animation: pulse 1s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.3;} }
+  .stk-success { color: var(--green); font-size: 40px; }
+  .stk-fail { color: var(--red); font-size: 40px; }
+
+  /* ── RECEIPT ── */
+  .receipt {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    background: var(--dark3);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 16px;
+    line-height: 1.8;
+  }
+  .receipt-divider { border: none; border-top: 1px dashed var(--border); margin: 8px 0; }
+  .receipt-row { display: flex; justify-content: space-between; }
+  .receipt-center { text-align: center; color: var(--text-muted); }
+  .receipt-title { text-align: center; color: var(--gold); font-size: 13px; font-weight: 700; letter-spacing: 2px; }
+
+  /* ── TOAST ── */
+  .toast-container { position: fixed; top: 70px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
+  .toast {
+    background: var(--dark2);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--gold);
+    border-radius: var(--r);
+    padding: 10px 16px;
+    font-size: 13px;
+    animation: toastIn .2s ease, toastOut .3s ease 2.7s forwards;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 220px;
+    box-shadow: 0 4px 20px rgba(0,0,0,.4);
+  }
+  .toast.success { border-left-color: var(--green); }
+  .toast.error { border-left-color: var(--red); }
+  @keyframes toastIn { from{opacity:0;transform:translateX(20px);} to{opacity:1;transform:translateX(0);} }
+  @keyframes toastOut { to{opacity:0;transform:translateX(20px);} }
+
+  /* ── DISCOUNT ── */
+  .discount-row {
+    display: flex; gap: 8px; align-items: center;
+  }
+  .discount-row input { flex: 1; }
+  .discount-type {
+    background: var(--dark3); border: 1px solid var(--border); border-radius: var(--r);
+    padding: 10px 10px; color: var(--text); font-family: 'Outfit',sans-serif; font-size:13px; outline:none;
+  }
+
+  /* ── NAV TABS bottom of left ── */
+  .view-tabs {
+    display: flex;
+    border-top: 1px solid var(--border);
+    background: var(--dark);
+    flex-shrink: 0;
+  }
+  .view-tab {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    background: none;
+    color: var(--text-dim);
+    font-family: 'Outfit',sans-serif;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    transition: color .18s;
+    border-top: 2px solid transparent;
+  }
+  .view-tab.active, .view-tab:hover { color: var(--gold); border-top-color: var(--gold); }
+  .view-tab svg { width: 16px; height: 16px; }
+
+  /* ── SALES LOG ── */
+  .sales-log { flex:1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+  .sale-entry {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 12px 14px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 4px;
+  }
+  .sale-entry .se-name { font-size:13px; font-weight:600; }
+  .sale-entry .se-time { font-size:11px; color:var(--text-muted); }
+  .sale-entry .se-amount { font-family:'DM Mono',monospace; font-size:14px; color:var(--gold); text-align:right; }
+  .sale-entry .se-method { font-size:10px; color:var(--text-dim); text-align:right; }
+  .log-summary {
+    background: var(--dark3);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  .no-data { padding: 40px; text-align:center; color:var(--text-dim); font-size:13px; }
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="logo-area">
+    <img src="data:image/png;base64,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" alt="Mejasan"/>
+    <div>
+      <div style="font-weight:700;font-size:13px;color:var(--gold);letter-spacing:.5px;">MEJASAN MEDIA</div>
+      <div class="logo-tagline">Point of Sale</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="topbar-clock" id="clock">--:--:--</div>
+    <div class="cashier-badge">Cashier: <span id="cashierName">Admin</span></div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- PRODUCTS PANEL -->
+  <div class="products-panel">
+    <div class="products-header">
+      <div class="search-wrap">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="6"/><path d="m15 15-3-3"/></svg>
+        <input class="search-box" id="searchInput" placeholder="Search products…" oninput="filterProducts()"/>
+      </div>
+    </div>
+    <div class="cat-tabs" id="catTabs"></div>
+    <div class="products-grid" id="productsGrid"></div>
+    <div class="view-tabs">
+      <button class="view-tab active" onclick="switchView('pos', this)">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="3" width="16" height="12" rx="1"/><path d="M6 17h8"/></svg>
+        POS
+      </button>
+      <button class="view-tab" onclick="switchView('sales', this)">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h12M4 8h8M4 12h10M4 16h6"/></svg>
+        Sales Log
+      </button>
+      <button class="view-tab" onclick="switchView('packages', this)">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 2l8 4v8l-8 4-8-4V6z"/><path d="M10 10l8-4M10 10v10M10 10L2 6"/></svg>
+        Packages
+      </button>
+    </div>
+  </div>
+
+  <!-- CART PANEL -->
+  <div class="cart-panel">
+    <div class="cart-header">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="cart-title">Order</span>
+        <span class="cart-count" id="cartCount">0</span>
+      </div>
+      <button class="btn-clear" onclick="clearCart()">Clear</button>
+    </div>
+
+    <div class="cart-items" id="cartItems">
+      <div class="cart-empty">
+        <div class="empty-icon">🎬</div>
+        <div>Add products to start an order</div>
+      </div>
+    </div>
+
+    <div class="cart-totals" id="cartTotals" style="display:none;">
+      <div class="total-row"><span class="lbl">Subtotal</span><span class="amt" id="subtotal">KES 0</span></div>
+      <div class="total-row"><span class="lbl">Discount</span><span class="amt" id="discountAmt" style="color:var(--red);">—</span></div>
+      <div class="total-row main"><span>TOTAL</span><span class="amt" id="totalAmt">KES 0</span></div>
+    </div>
+
+    <div class="customer-bar">
+      <input class="cust-input" id="custName" placeholder="Client name…"/>
+      <input class="cust-input" id="custPhone" placeholder="0700 000 000" style="max-width:140px;"/>
+    </div>
+
+    <div class="pay-section">
+      <div class="pay-row">
+        <button class="btn-pay" onclick="openPayModal('cash')">💵 Cash</button>
+        <button class="btn-pay" onclick="openPayModal('card')">💳 Card</button>
+        <button class="btn-pay" onclick="openPayModal('bank')">🏦 Bank Transfer</button>
+        <button class="btn-pay" onclick="openDiscountModal()">🏷️ Discount</button>
+      </div>
+      <button class="btn-pay btn-mpesa" onclick="openMpesaModal()">
+        <span class="mpesa-logo">M-PESA</span> Pay via STK Push
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ── MPESA MODAL ── -->
+<div class="modal-overlay" id="mpesaModal" style="display:none;" onclick="closeMpesa(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <span class="modal-title">M-Pesa STK Push</span>
+      <button class="modal-close" onclick="closeMpesaModal()">✕</button>
+    </div>
+    <div class="modal-body" id="mpesaBody">
+      <!-- dynamic content -->
+    </div>
+    <div class="modal-footer" id="mpesaFooter"></div>
+  </div>
+</div>
+
+<!-- ── PAYMENT MODAL ── -->
+<div class="modal-overlay" id="payModal" style="display:none;" onclick="closePayModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <span class="modal-title" id="payModalTitle">Payment</span>
+      <button class="modal-close" onclick="closePayModalDirect()">✕</button>
+    </div>
+    <div class="modal-body" id="payModalBody"></div>
+    <div class="modal-footer" id="payModalFooter"></div>
+  </div>
+</div>
+
+<!-- ── DISCOUNT MODAL ── -->
+<div class="modal-overlay" id="discountModal" style="display:none;" onclick="closeDiscountModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <span class="modal-title">Apply Discount</span>
+      <button class="modal-close" onclick="closeDiscountModalDirect()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Discount Type</label>
+        <select class="form-select" id="discountType">
+          <option value="percent">Percentage (%)</option>
+          <option value="fixed">Fixed Amount (KES)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Value</label>
+        <input class="form-input" id="discountValue" type="number" min="0" placeholder="0"/>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeDiscountModalDirect()">Cancel</button>
+      <button class="btn-primary" onclick="applyDiscount()">Apply</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── RECEIPT MODAL ── -->
+<div class="modal-overlay" id="receiptModal" style="display:none;" onclick="closeReceiptModal(event)">
+  <div class="modal" onclick="event.stopPropagation()" style="width:460px;">
+    <div class="modal-header">
+      <span class="modal-title">Receipt</span>
+      <button class="modal-close" onclick="closeReceiptModalDirect()">✕</button>
+    </div>
+    <div class="modal-body" id="receiptBody"></div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="printReceipt()">🖨️ Print</button>
+      <button class="btn-primary" onclick="newSale()">New Sale</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── PRODUCT CATALOG ──────────────────────────────────────
+const PRODUCTS = [
+  // PHOTOGRAPHY
+  { id:'p1', cat:'Photography', icon:'📸', name:'Wedding Full-Day Photography', sub:'Sunrise to last dance', price:35000, unit:'event' },
+  { id:'p2', cat:'Photography', icon:'📷', name:'Half-Day Photography', sub:'Up to 6 hours', price:20000, unit:'event' },
+  { id:'p3', cat:'Photography', icon:'🤳', name:'Portrait Session', sub:'Studio / outdoor 2hrs', price:8000, unit:'session' },
+  { id:'p4', cat:'Photography', icon:'💍', name:'Engagement Shoot', sub:'Up to 3 hours, edited gallery', price:12000, unit:'session' },
+  { id:'p5', cat:'Photography', icon:'🏢', name:'Corporate Headshots', sub:'Per person, studio setup', price:3500, unit:'person' },
+  { id:'p6', cat:'Photography', icon:'🎂', name:'Birthday Photography', sub:'2-hour event coverage', price:7000, unit:'event' },
+  { id:'p7', cat:'Photography', icon:'🎓', name:'Graduation Shoot', sub:'1-hour session + edits', price:5000, unit:'session' },
+  { id:'p8', cat:'Photography', icon:'🖼️', name:'Printed Album (30 pages)', sub:'Premium lay-flat book', price:15000, unit:'album' },
+  { id:'p9', cat:'Photography', icon:'🖨️', name:'Extra Print (A4)', sub:'Professional print + frame', price:1500, unit:'print' },
+
+  // VIDEOGRAPHY
+  { id:'v1', cat:'Videography', icon:'🎬', name:'Wedding Highlight Film', sub:'5–8 min cinematic edit', price:30000, unit:'event' },
+  { id:'v2', cat:'Videography', icon:'📽️', name:'Full Documentary Edit', sub:'Raw + edited full coverage', price:45000, unit:'event' },
+  { id:'v3', cat:'Videography', icon:'🎥', name:'Corporate Video', sub:'Up to 3 min, colour graded', price:25000, unit:'project' },
+  { id:'v4', cat:'Videography', icon:'📱', name:'Social Media Reels', sub:'3× 60-second reels', price:12000, unit:'pack' },
+  { id:'v5', cat:'Videography', icon:'🎞️', name:'Event Coverage Video', sub:'Full event, 4–5 hr shoot', price:20000, unit:'event' },
+  { id:'v6', cat:'Videography', icon:'🎵', name:'Music Video Production', sub:'1-day shoot + editing', price:80000, unit:'project' },
+  { id:'v7', cat:'Videography', icon:'🏠', name:'Real Estate Walkthrough', sub:'Property video tour', price:9000, unit:'property' },
+
+  // DRONE
+  { id:'d1', cat:'Drone', icon:'🚁', name:'Drone Coverage Add-on', sub:'Up to 2 hours aerial', price:15000, unit:'event' },
+  { id:'d2', cat:'Drone', icon:'🌅', name:'Aerial Photography Only', sub:'30-min drone session', price:8000, unit:'session' },
+  { id:'d3', cat:'Drone', icon:'🏗️', name:'Construction Progress Drone', sub:'Monthly site aerial', price:12000, unit:'month' },
+  { id:'d4', cat:'Drone', icon:'🏞️', name:'Land Survey Footage', sub:'Per acre aerial mapping', price:5000, unit:'acre' },
+
+  // PACKAGES
+  { id:'pk1', cat:'Packages', icon:'⭐', name:'Silver Package', sub:'Photo + Video half-day', price:45000, unit:'event', badge:'Popular' },
+  { id:'pk2', cat:'Packages', icon:'🌟', name:'Gold Package', sub:'Full-day photo + highlight film', price:75000, unit:'event', badge:'Best Value' },
+  { id:'pk3', cat:'Packages', icon:'💫', name:'Platinum Package', sub:'Full-day photo + full documentary + drone', price:110000, unit:'event', badge:'Premium' },
+  { id:'pk4', cat:'Packages', icon:'💼', name:'Corporate Bundle', sub:'Headshots + corporate video + reels', price:55000, unit:'project' },
+  { id:'pk5', cat:'Packages', icon:'🎊', name:'Birthday Bundle', sub:'Photography + 60-sec reel', price:12000, unit:'event' },
+
+  // ADD-ONS
+  { id:'a1', cat:'Add-ons', icon:'🎙️', name:'Photo Booth Setup', sub:'2-hour booth + prints', price:18000, unit:'event' },
+  { id:'a2', cat:'Add-ons', icon:'🎞️', name:'Same-Day Edit', sub:'Highlights ready day-of', price:20000, unit:'event' },
+  { id:'a3', cat:'Add-ons', icon:'🖥️', name:'Slideshow Presentation', sub:'Fully edited & synced', price:8000, unit:'event' },
+  { id:'a4', cat:'Add-ons', icon:'☁️', name:'Cloud Gallery Delivery', sub:'Online gallery 12 months', price:3000, unit:'year' },
+  { id:'a5', cat:'Add-ons', icon:'💿', name:'Raw Files (USB Drive)', sub:'All unedited files on drive', price:5000, unit:'drive' },
+  { id:'a6', cat:'Add-ons', icon:'🚗', name:'Travel Fee (outside Nairobi)', sub:'Per 50km radius', price:3000, unit:'trip' },
+  { id:'a7', cat:'Add-ons', icon:'🌙', name:'Overtime (per hour)', sub:'After agreed end time', price:4000, unit:'hour' },
+  { id:'a8', cat:'Add-ons', icon:'🎨', name:'Custom Colour Grading', sub:'Cinematic LUT application', price:5000, unit:'project' },
+  { id:'a9', cat:'Add-ons', icon:'🖼️', name:'Canvas Print (A2)', sub:'Mounted canvas print', price:4500, unit:'print' },
+];
+
+const CATEGORIES = ['All', ...new Set(PRODUCTS.map(p => p.cat))];
+let activeCategory = 'All';
+let cart = [];
+let discount = { type: 'none', value: 0 };
+let salesLog = [];
+let txRef = 0;
+
+// ── INIT ──────────────────────────────────────────────────
+function init() {
+  renderCatTabs();
+  renderProducts();
+  startClock();
+}
+
+function startClock() {
+  const update = () => {
+    const now = new Date();
+    document.getElementById('clock').textContent =
+      now.toLocaleTimeString('en-KE', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+  };
+  update();
+  setInterval(update, 1000);
+}
+
+// ── CATEGORIES ─────────────────────────────────────────────
+function renderCatTabs() {
+  const el = document.getElementById('catTabs');
+  el.innerHTML = CATEGORIES.map(c =>
+    `<button class="cat-tab${c===activeCategory?' active':''}" onclick="setCategory('${c}')">${c}</button>`
+  ).join('');
+}
+
+function setCategory(cat) {
+  activeCategory = cat;
+  renderCatTabs();
+  filterProducts();
+}
+
+// ── PRODUCTS ───────────────────────────────────────────────
+function filterProducts() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  const filtered = PRODUCTS.filter(p => {
+    const matchCat = activeCategory === 'All' || p.cat === activeCategory;
+    const matchQ = !q || p.name.toLowerCase().includes(q) || p.sub.toLowerCase().includes(q);
+    return matchCat && matchQ;
+  });
+  renderProducts(filtered);
+}
+
+function renderProducts(list = PRODUCTS) {
+  const grid = document.getElementById('productsGrid');
+  const catColors = { Photography:'#C9A84C', Videography:'#4c8faf', Drone:'#4caf7d', Packages:'#e05252', 'Add-ons':'#9b6fe8' };
+  grid.innerHTML = list.map(p => `
+    <div class="product-card" onclick="addToCart('${p.id}')" style="--cat-color:${catColors[p.cat]||'var(--gold)'}">
+      ${p.badge ? `<span class="product-badge">${p.badge}</span>` : ''}
+      <div class="product-icon">${p.icon}</div>
+      <div class="product-name">${p.name}</div>
+      <div class="product-sub">${p.sub}</div>
+      <div class="product-price">KES ${p.price.toLocaleString()} <span style="font-size:10px;color:var(--text-dim);">/ ${p.unit}</span></div>
+    </div>
+  `).join('');
+}
+
+// ── CART ──────────────────────────────────────────────────
+function addToCart(id) {
+  const product = PRODUCTS.find(p => p.id === id);
+  if (!product) return;
+  const existing = cart.find(c => c.id === id);
+  if (existing) {
+    existing.qty++;
+  } else {
+    cart.push({ ...product, qty: 1, note: '' });
+  }
+  renderCart();
+  showToast(`${product.icon} ${product.name} added`, 'success');
+}
+
+function removeFromCart(id) {
+  cart = cart.filter(c => c.id !== id);
+  renderCart();
+}
+
+function changeQty(id, delta) {
+  const item = cart.find(c => c.id === id);
+  if (!item) return;
+  item.qty = Math.max(1, item.qty + delta);
+  renderCart();
+}
+
+function updateNote(id, val) {
+  const item = cart.find(c => c.id === id);
+  if (item) item.note = val;
+}
+
+function clearCart() {
+  cart = [];
+  discount = { type: 'none', value: 0 };
+  renderCart();
+}
+
+function renderCart() {
+  const el = document.getElementById('cartItems');
+  const totalsEl = document.getElementById('cartTotals');
+  document.getElementById('cartCount').textContent = cart.reduce((s,c)=>s+c.qty,0);
+
+  if (!cart.length) {
+    el.innerHTML = `<div class="cart-empty"><div class="empty-icon">🎬</div><div>Add products to start an order</div></div>`;
+    totalsEl.style.display = 'none';
+    return;
+  }
+
+  el.innerHTML = cart.map(item => `
+    <div class="cart-item">
+      <div>
+        <div class="ci-name">${item.icon} ${item.name}</div>
+        <div class="ci-sub">${item.sub}</div>
+        <div class="ci-controls">
+          <button class="qty-btn" onclick="changeQty('${item.id}',-1)">−</button>
+          <span class="qty-val">${item.qty}</span>
+          <button class="qty-btn" onclick="changeQty('${item.id}',1)">+</button>
+        </div>
+      </div>
+      <div>
+        <div class="ci-price">KES ${(item.price*item.qty).toLocaleString()}</div>
+        <button class="ci-remove" onclick="removeFromCart('${item.id}')">✕</button>
+      </div>
+      <div class="ci-note">
+        <input placeholder="Note (optional)…" value="${item.note||''}" oninput="updateNote('${item.id}',this.value)"/>
+      </div>
+    </div>
+  `).join('');
+
+  totalsEl.style.display = 'flex';
+  const sub = cart.reduce((s,c)=>s+c.price*c.qty,0);
+  let disc = 0;
+  if (discount.type === 'percent') disc = Math.round(sub * discount.value / 100);
+  if (discount.type === 'fixed') disc = Math.min(discount.value, sub);
+  const total = sub - disc;
+
+  document.getElementById('subtotal').textContent = `KES ${sub.toLocaleString()}`;
+  document.getElementById('discountAmt').textContent = disc > 0 ? `−KES ${disc.toLocaleString()}` : '—';
+  document.getElementById('totalAmt').textContent = `KES ${total.toLocaleString()}`;
+}
+
+function getTotal() {
+  const sub = cart.reduce((s,c)=>s+c.price*c.qty,0);
+  let disc = 0;
+  if (discount.type === 'percent') disc = Math.round(sub * discount.value / 100);
+  if (discount.type === 'fixed') disc = Math.min(discount.value, sub);
+  return { sub, disc, total: sub - disc };
+}
+
+// ── DISCOUNT ──────────────────────────────────────────────
+function openDiscountModal() {
+  document.getElementById('discountModal').style.display = 'flex';
+}
+function closeDiscountModal(e) { if(e.target===document.getElementById('discountModal')) closeDiscountModalDirect(); }
+function closeDiscountModalDirect() { document.getElementById('discountModal').style.display = 'none'; }
+function applyDiscount() {
+  const type = document.getElementById('discountType').value;
+  const value = parseFloat(document.getElementById('discountValue').value) || 0;
+  discount = { type, value };
+  renderCart();
+  closeDiscountModalDirect();
+  showToast(`Discount applied: ${type==='percent'?value+'%':'KES '+value.toLocaleString()}`, 'success');
+}
+
+// ── PAYMENT MODALS ────────────────────────────────────────
+function openPayModal(method) {
+  if (!cart.length) { showToast('Cart is empty', 'error'); return; }
+  const { total } = getTotal();
+  const titles = { cash:'Cash Payment', card:'Card Payment', bank:'Bank Transfer' };
+  document.getElementById('payModalTitle').textContent = titles[method];
+  const body = document.getElementById('payModalBody');
+
+  if (method === 'cash') {
+    body.innerHTML = `
+      <div style="text-align:center;padding:10px 0;">
+        <div style="font-size:13px;color:var(--text-muted);margin-bottom:6px;">Amount Due</div>
+        <div style="font-family:'DM Serif Display',serif;font-size:32px;color:var(--gold);">KES ${total.toLocaleString()}</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Amount Tendered</label>
+        <input class="form-input" id="cashTendered" type="number" placeholder="${total}" oninput="calcChange(${total})"/>
+      </div>
+      <div id="changeDisplay" style="text-align:center;font-size:14px;color:var(--green);margin-top:4px;"></div>
+    `;
+    document.getElementById('payModalFooter').innerHTML = `
+      <button class="btn-secondary" onclick="closePayModalDirect()">Cancel</button>
+      <button class="btn-primary" onclick="confirmPayment('cash')">Confirm Payment</button>
+    `;
+  } else if (method === 'card') {
+    body.innerHTML = `
+      <div style="text-align:center;padding:10px 0;">
+        <div style="font-size:13px;color:var(--text-muted);margin-bottom:6px;">Charge Amount</div>
+        <div style="font-family:'DM Serif Display',serif;font-size:32px;color:var(--gold);">KES ${total.toLocaleString()}</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Card / Reference Number</label>
+        <input class="form-input" id="cardRef" placeholder="Last 4 digits or ref…"/>
+      </div>
+    `;
+    document.getElementById('payModalFooter').innerHTML = `
+      <button class="btn-secondary" onclick="closePayModalDirect()">Cancel</button>
+      <button class="btn-primary" onclick="confirmPayment('card')">Mark as Paid</button>
+    `;
+  } else if (method === 'bank') {
+    body.innerHTML = `
+      <div style="text-align:center;padding:10px 0;">
+        <div style="font-size:13px;color:var(--text-muted);margin-bottom:6px;">Transfer Amount</div>
+        <div style="font-family:'DM Serif Display',serif;font-size:32px;color:var(--gold);">KES ${total.toLocaleString()}</div>
+      </div>
+      <div class="receipt" style="margin-bottom:4px;">
+        <div class="receipt-center" style="color:var(--gold);font-weight:700;">MEJASAN MEDIA</div>
+        <div class="receipt-center">Bank: Equity Bank Kenya</div>
+        <div class="receipt-center">Account: 1234567890</div>
+        <div class="receipt-center">Branch: Westlands</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Transfer Reference / Code</label>
+        <input class="form-input" id="bankRef" placeholder="e.g. EKB123456"/>
+      </div>
+    `;
+    document.getElementById('payModalFooter').innerHTML = `
+      <button class="btn-secondary" onclick="closePayModalDirect()">Cancel</button>
+      <button class="btn-primary" onclick="confirmPayment('bank')">Confirm Transfer</button>
+    `;
+  }
+
+  document.getElementById('payModal').style.display = 'flex';
+}
+
+function calcChange(total) {
+  const tendered = parseFloat(document.getElementById('cashTendered').value)||0;
+  const change = tendered - total;
+  const el = document.getElementById('changeDisplay');
+  if (tendered > 0) {
+    el.textContent = change >= 0 ? `Change: KES ${change.toLocaleString()}` : `Short by: KES ${Math.abs(change).toLocaleString()}`;
+    el.style.color = change >= 0 ? 'var(--green)' : 'var(--red)';
+  } else { el.textContent = ''; }
+}
+
+function closePayModal(e) { if(e.target===document.getElementById('payModal')) closePayModalDirect(); }
+function closePayModalDirect() { document.getElementById('payModal').style.display = 'none'; }
+
+function confirmPayment(method) {
+  const { total } = getTotal();
+  closePayModalDirect();
+  recordSale(method, total);
+  showReceipt(method, total);
+}
+
+// ── MPESA STK ─────────────────────────────────────────────
+function openMpesaModal() {
+  if (!cart.length) { showToast('Cart is empty', 'error'); return; }
+  const { total } = getTotal();
+  const custPhone = document.getElementById('custPhone').value.trim();
+  const phoneFormatted = formatPhone(custPhone);
+
+  document.getElementById('mpesaBody').innerHTML = `
+    <div class="form-group">
+      <label class="form-label">M-Pesa Phone Number</label>
+      <input class="form-input" id="mpesaPhone" placeholder="0700 000 000" value="${custPhone||''}" maxlength="13"/>
+    </div>
+    <div style="text-align:center;padding:8px 0;">
+      <div style="font-size:12px;color:var(--text-muted);">Amount to charge</div>
+      <div style="font-family:'DM Serif Display',serif;font-size:28px;color:var(--gold);margin-top:4px;">KES ${total.toLocaleString()}</div>
+    </div>
+    <div style="background:var(--dark3);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;font-size:12px;color:var(--text-muted);line-height:1.7;">
+      <strong style="color:var(--text);">How it works:</strong><br/>
+      1. Enter the M-Pesa number<br/>
+      2. Click <em>Send STK Push</em><br/>
+      3. Client enters their M-Pesa PIN on their phone<br/>
+      4. Payment is confirmed automatically
+    </div>
+  `;
+  document.getElementById('mpesaFooter').innerHTML = `
+    <button class="btn-secondary" onclick="closeMpesaModal()">Cancel</button>
+    <button class="btn-primary" style="background:#04a04a;color:#fff;" onclick="sendSTK(${total})">📲 Send STK Push</button>
+  `;
+  document.getElementById('mpesaModal').style.display = 'flex';
+}
+
+function formatPhone(phone) {
+  phone = phone.replace(/\D/g,'');
+  if (phone.startsWith('0')) phone = '254'+phone.slice(1);
+  if (phone.startsWith('7') || phone.startsWith('1')) phone = '254'+phone;
+  return phone;
+}
+
+function sendSTK(total) {
+  const rawPhone = document.getElementById('mpesaPhone').value.trim();
+  if (!rawPhone) { showToast('Enter a phone number', 'error'); return; }
+  const phone = formatPhone(rawPhone);
+
+  // Show loading state
+  document.getElementById('mpesaBody').innerHTML = `
+    <div class="stk-status">
+      <div class="stk-spinner"></div>
+      <div class="stk-phone-display">+${phone}</div>
+      <div class="stk-amount">KES ${total.toLocaleString()}</div>
+      <div class="stk-msg">
+        <span class="status-dot dot-yellow"></span>
+        &nbsp;STK Push sent! Waiting for client to enter PIN on their phone…
+      </div>
+    </div>
+  `;
+  document.getElementById('mpesaFooter').innerHTML = `<button class="btn-secondary" onclick="closeMpesaModal()" style="flex:1;">Cancel</button>`;
+
+  // Simulate STK push to your backend
+  // In production, replace with your actual Daraja API call:
+  /*
+  fetch('https://your-backend.com/api/mpesa/stk', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ phone, amount: total, ref: 'MEJASAN-' + Date.now() })
+  }).then(r => r.json()).then(data => {
+    if (data.ResponseCode === '0') pollSTKStatus(data.CheckoutRequestID, total, phone);
+    else onSTKFail('STK push failed. Try again.');
+  }).catch(() => onSTKFail('Network error. Check connection.'));
+  */
+
+  // DEMO: simulate success after 4 seconds
+  setTimeout(() => {
+    const success = Math.random() > 0.15; // 85% success rate in demo
+    if (success) {
+      const mpesaCode = 'QGH' + Math.random().toString(36).slice(2,8).toUpperCase();
+      onSTKSuccess(mpesaCode, total, phone);
+    } else {
+      onSTKFail('Client cancelled or timeout. Request the client to try again.');
+    }
+  }, 4000);
+}
+
+function onSTKSuccess(mpesaCode, total, phone) {
+  document.getElementById('mpesaBody').innerHTML = `
+    <div class="stk-status">
+      <div class="stk-success">✅</div>
+      <div style="font-size:16px;font-weight:700;color:var(--green);">Payment Received!</div>
+      <div class="stk-amount">KES ${total.toLocaleString()}</div>
+      <div class="stk-phone-display">+${phone}</div>
+      <div class="receipt" style="width:100%;text-align:left;">
+        <div class="receipt-row"><span>M-Pesa Code:</span><span style="color:var(--gold);">${mpesaCode}</span></div>
+        <div class="receipt-row"><span>Amount:</span><span>KES ${total.toLocaleString()}</span></div>
+        <div class="receipt-row"><span>Time:</span><span>${new Date().toLocaleTimeString('en-KE')}</span></div>
+      </div>
+    </div>
+  `;
+  document.getElementById('mpesaFooter').innerHTML = `
+    <button class="btn-primary" style="background:#04a04a;color:#fff;" onclick="finalizeMpesa('${mpesaCode}',${total})">Complete & Print Receipt</button>
+  `;
+}
+
+function onSTKFail(msg) {
+  document.getElementById('mpesaBody').innerHTML = `
+    <div class="stk-status">
+      <div class="stk-fail">❌</div>
+      <div style="font-size:15px;font-weight:700;color:var(--red);">Payment Failed</div>
+      <div class="stk-msg">${msg}</div>
+    </div>
+  `;
+  document.getElementById('mpesaFooter').innerHTML = `
+    <button class="btn-secondary" onclick="closeMpesaModal()">Close</button>
+    <button class="btn-primary" style="background:#04a04a;color:#fff;" onclick="openMpesaModal()">Retry</button>
+  `;
+}
+
+function finalizeMpesa(code, total) {
+  closeMpesaModal();
+  recordSale('M-Pesa ('+code+')', total);
+  showReceipt('M-Pesa', total, code);
+}
+
+function closeMpesa(e) { if(e.target===document.getElementById('mpesaModal')) closeMpesaModal(); }
+function closeMpesaModal() { document.getElementById('mpesaModal').style.display = 'none'; }
+
+// ── RECEIPT ───────────────────────────────────────────────
+function showReceipt(method, total, mpesaCode) {
+  const { sub, disc } = getTotal();
+  const custName = document.getElementById('custName').value || 'Walk-in Client';
+  const custPhone = document.getElementById('custPhone').value || '—';
+  const now = new Date();
+  txRef++;
+  const ref = 'MJN-' + String(txRef).padStart(4,'0') + '-' + now.getFullYear();
+
+  const itemRows = cart.map(item =>
+    `<div class="receipt-row"><span>${item.qty}× ${item.name}</span><span>KES ${(item.price*item.qty).toLocaleString()}</span></div>`
+  ).join('');
+
+  document.getElementById('receiptBody').innerHTML = `
+    <div class="receipt">
+      <div class="receipt-title">MEJASAN MEDIA PRODUCTION</div>
+      <div class="receipt-center" style="font-size:10px;">"We Deliver Quality" · Nairobi, Kenya</div>
+      <hr class="receipt-divider"/>
+      <div class="receipt-row"><span>Receipt:</span><span>${ref}</span></div>
+      <div class="receipt-row"><span>Date:</span><span>${now.toLocaleDateString('en-KE')}</span></div>
+      <div class="receipt-row"><span>Time:</span><span>${now.toLocaleTimeString('en-KE')}</span></div>
+      <div class="receipt-row"><span>Client:</span><span>${custName}</span></div>
+      <div class="receipt-row"><span>Phone:</span><span>${custPhone}</span></div>
+      <div class="receipt-row"><span>Method:</span><span>${method}</span></div>
+      ${mpesaCode ? `<div class="receipt-row"><span>M-Pesa Ref:</span><span style="color:var(--gold);">${mpesaCode}</span></div>` : ''}
+      <hr class="receipt-divider"/>
+      ${itemRows}
+      <hr class="receipt-divider"/>
+      <div class="receipt-row"><span>Subtotal</span><span>KES ${sub.toLocaleString()}</span></div>
+      ${disc > 0 ? `<div class="receipt-row"><span>Discount</span><span>−KES ${disc.toLocaleString()}</span></div>` : ''}
+      <div class="receipt-row" style="font-weight:700;color:var(--gold);"><span>TOTAL</span><span>KES ${total.toLocaleString()}</span></div>
+      <hr class="receipt-divider"/>
+      <div class="receipt-center">Thank you for choosing Mejasan Media!</div>
+      <div class="receipt-center">+254 700 000 000 · mejasan.com</div>
+    </div>
+  `;
+  document.getElementById('receiptModal').style.display = 'flex';
+}
+
+function closeReceiptModal(e) { if(e.target===document.getElementById('receiptModal')) closeReceiptModalDirect(); }
+function closeReceiptModalDirect() { document.getElementById('receiptModal').style.display = 'none'; }
+
+function printReceipt() {
+  window.print();
+}
+
+function newSale() {
+  closeReceiptModalDirect();
+  clearCart();
+  document.getElementById('custName').value = '';
+  document.getElementById('custPhone').value = '';
+  showToast('New sale started', 'success');
+}
+
+// ── SALES LOG ─────────────────────────────────────────────
+function recordSale(method, total) {
+  const custName = document.getElementById('custName').value || 'Walk-in';
+  salesLog.unshift({
+    name: custName,
+    items: [...cart],
+    method,
+    total,
+    time: new Date(),
+  });
+}
+
+function switchView(view, btn) {
+  document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  const grid = document.getElementById('productsGrid');
+  const catTabs = document.getElementById('catTabs');
+  const searchWrap = document.querySelector('.search-wrap');
+
+  if (view === 'pos') {
+    grid.style.display = '';
+    catTabs.style.display = '';
+    searchWrap.style.display = '';
+    renderProducts();
+  } else if (view === 'sales') {
+    catTabs.style.display = 'none';
+    searchWrap.style.display = 'none';
+    grid.innerHTML = renderSalesLog();
+    grid.style.display = 'block';
+    grid.style.overflowY = 'auto';
+  } else if (view === 'packages') {
+    catTabs.style.display = 'none';
+    searchWrap.style.display = 'none';
+    activeCategory = 'Packages';
+    grid.style.display = '';
+    renderProducts(PRODUCTS.filter(p => p.cat === 'Packages'));
+  }
+}
+
+function renderSalesLog() {
+  if (!salesLog.length) return `<div class="no-data">No sales recorded yet this session.</div>`;
+  const dayTotal = salesLog.reduce((s,l)=>s+l.total, 0);
+  const rows = salesLog.map(s => `
+    <div class="sale-entry">
+      <div>
+        <div class="se-name">${s.name}</div>
+        <div class="se-time">${s.items.length} item(s) · ${s.time.toLocaleTimeString('en-KE')}</div>
+      </div>
+      <div>
+        <div class="se-amount">KES ${s.total.toLocaleString()}</div>
+        <div class="se-method">${s.method}</div>
+      </div>
+    </div>
+  `).join('');
+  return `
+    <div style="padding:14px;display:flex;flex-direction:column;gap:8px;height:100%;overflow-y:auto;">
+      <div class="log-summary">
+        <div>
+          <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;">Today's Sales</div>
+          <div style="font-size:20px;font-weight:700;color:var(--gold);font-family:'DM Mono',monospace;">KES ${dayTotal.toLocaleString()}</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:11px;color:var(--text-muted);">Transactions</div>
+          <div style="font-size:20px;font-weight:700;">${salesLog.length}</div>
+        </div>
+      </div>
+      ${rows}
+    </div>
+  `;
+}
+
+// ── TOAST ─────────────────────────────────────────────────
+function showToast(msg, type='info') {
+  const container = document.getElementById('toastContainer');
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  const icons = { success:'✓', error:'✕', info:'ℹ' };
+  el.innerHTML = `<span>${icons[type]||'ℹ'}</span><span>${msg}</span>`;
+  container.appendChild(el);
+  setTimeout(() => el.remove(), 3200);
+}
+
+init();
+</script>
+</body>
+</html>
