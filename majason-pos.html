@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Mejason POS</title>
+<title>Mejasan POS</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
@@ -140,7 +140,7 @@ label{font-size:10px;color:var(--muted);display:block;margin-bottom:3px}
   <div class="supabase-setup">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
       <div style="width:36px;height:36px;background:var(--red);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:18px">M</div>
-      <div><div style="font-weight:700;font-size:15px">Mejason POS — Database Setup</div><div style="font-size:11px;color:var(--muted)">Connect Supabase for persistent data</div></div>
+      <div><div style="font-weight:700;font-size:15px">Mejasan POS — Database Setup</div><div style="font-size:11px;color:var(--muted)">Connect Supabase for persistent data</div></div>
     </div>
     <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:12px;margin-bottom:16px;font-size:11px;color:#0c4a6e;line-height:1.7">
       <strong>How to get your Supabase credentials:</strong><br>
@@ -177,7 +177,7 @@ create policy "allow all" on payments for all using (true) with check (true);</p
   <div class="login-box">
     <div class="login-logo">
       <div class="login-icon">M</div>
-      <div class="login-title">Mejason Media Production<span>Point of Sale System</span></div>
+      <div class="login-title">Mejasan Media Production<span>Point of Sale System</span></div>
     </div>
     <div id="db-mode-badge" style="text-align:center;margin-bottom:12px"></div>
     <div class="login-field"><label>Username</label><input id="li-user" placeholder="Enter username" onkeydown="if(event.key==='Enter')doLogin()"/></div>
@@ -193,7 +193,7 @@ create policy "allow all" on payments for all using (true) with check (true);</p
   <div class="topbar">
     <div class="topbar-brand">
       <div class="tb-icon">M</div>
-      <span style="font-size:12px;font-weight:700;color:var(--text)">mejason <span style="color:var(--red)">POS</span></span>
+      <span style="font-size:12px;font-weight:700;color:var(--text)">Mejasan <span style="color:var(--red)">POS</span></span>
     </div>
     <div class="topbar-title" id="page-title">Dashboard</div>
     <div class="topbar-info">
@@ -374,7 +374,7 @@ async function loadFromSupabase(){
 const USERS=[
   {id:'u1',username:'admin',password:'admin',name:'Admin User',role:'admin',color:'#C8252A',
    perms:['dashboard','pos','invoices','clients','inventory','analytics','users','services','settings']},
-  {id:'u2',username:'manager',password:'manager',name:'Mejason W.',role:'manager',color:'#2563eb',
+  {id:'u2',username:'manager',password:'manager',name:'Mejasan W.',role:'manager',color:'#2563eb',
    perms:['dashboard','pos','invoices','clients','inventory','analytics','services']},
   {id:'u3',username:'cashier',password:'cashier',name:'Cashier',role:'cashier',color:'#16a34a',
    perms:['pos','invoices','clients']},
@@ -797,7 +797,7 @@ function showInvoice(idOrInv){
   document.getElementById('inv-modal-body').innerHTML=`
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
       <div style="width:38px;height:38px;background:var(--red);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:18px">M</div>
-      <div><div style="font-size:13px;font-weight:700">Mejason Media Production</div><div style="font-size:10px;color:var(--muted)">Joventure Hotel, 1st Floor, Kibos Rd, Kisumu</div></div>
+      <div><div style="font-size:13px;font-weight:700">Mejasan Media Production</div><div style="font-size:10px;color:var(--muted)">Joventure Hotel, 1st Floor, Kibos Rd, Kisumu</div></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:12px;font-size:11px">
       <div><label>Invoice #</label><strong>${inv.id}</strong></div>
@@ -1085,7 +1085,7 @@ function renderSettings(){
       <div class="card">
         <div class="card-title"><i class="ti ti-building" style="color:var(--red)"></i> Business Info</div>
         <div style="display:grid;gap:10px">
-          <div><label>Business Name</label><input value="Mejason Media Production"/></div>
+          <div><label>Business Name</label><input value="Mejasan Media Production"/></div>
           <div><label>Location</label><input value="Joventure Hotel, 1st Floor, Kibos Rd, Kisumu"/></div>
           <div><label>Phone 1</label><input value="+254 700 864849"/></div>
           <div><label>Phone 2</label><input value="+254 768 375441"/></div>
@@ -1097,7 +1097,7 @@ function renderSettings(){
         <div style="display:grid;gap:10px">
           <div><label>Paybill Number</label><input value="522533"/></div>
           <div><label>Account Number</label><input value="7616319"/></div>
-          <div><label>M-Pesa Name</label><input value="Mejason Media Production"/></div>
+          <div><label>M-Pesa Name</label><input value="Mejasan Media Production"/></div>
           <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px;font-size:11px;color:#166534"><i class="ti ti-info-circle"></i> STK Push is simulated. Connect Safaricom Daraja API for live payments.</div>
         </div>
       </div>
@@ -1111,10 +1111,10 @@ function renderSettings(){
       <div class="card">
         <div class="card-title"><i class="ti ti-social" style="color:var(--blue)"></i> Social & Contact</div>
         <div style="display:grid;gap:10px">
-          <div><label>Facebook</label><input value="Mejason Media Production"/></div>
-          <div><label>Instagram</label><input value="@mejasonmedia"/></div>
-          <div><label>Email</label><input value="mejasonmedia@gmail.com"/></div>
-          <div><label>Website</label><input value="www.mejasonmedia.co.ke"/></div>
+          <div><label>Facebook</label><input value="Mejasan Media Production"/></div>
+          <div><label>Instagram</label><input value="@Mejasanmedia"/></div>
+          <div><label>Email</label><input value="Mejasanmedia@gmail.com"/></div>
+          <div><label>Website</label><input value="www.Mejasanmedia.co.ke"/></div>
         </div>
       </div>
     </div>
@@ -1282,6 +1282,6 @@ function togglePerm(userId,perm,enabled){
 function openModal(id){document.getElementById(id).classList.add('show');}
 function closeModal(id){document.getElementById(id).classList.remove('show');}
 
-</script> Mejason-media
+</script> Mejasan-media
 </body>
 </html>
