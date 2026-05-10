@@ -491,19 +491,36 @@ const SEND_CONFIG = {
 
 async function generatePDFAsBlob(htmlContent, filename) {
   return new Promise((resolve, reject) => {
-    const element = document.createElement('div');
-    element.innerHTML = htmlContent;
-    html2pdf().set({
-      margin: 10,
-      filename: filename,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2 },
-      jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' }
-    }).from(element).outputPdf().then(pdfBlob => {
-      resolve(pdfBlob);
-    }).catch(err => {
+    try {
+      const element = document.createElement('div');
+      element.innerHTML = htmlContent;
+      element.style.display = 'none';
+      document.body.appendChild(element);
+      
+      html2pdf()
+        .set({
+          margin: 10,
+          filename: filename,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2 },
+          jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' }
+        })
+        .from(element)
+        .toPdf()
+        .output('blob')
+        .then(blob => {
+          document.body.removeChild(element);
+          resolve(blob);
+        })
+        .catch(err => {
+          console.error('PDF generation error:', err);
+          document.body.removeChild(element);
+          reject(err);
+        });
+    } catch (err) {
+      console.error('PDF setup error:', err);
       reject(err);
-    });
+    }
   });
 }
 
@@ -512,42 +529,35 @@ async function sendInvoiceAutomatedEmail(invId, email, clientName) {
     const inv = invoices.find(i => i.id === invId);
     if (!inv || !email) { alert('Invoice or email missing'); return false; }
     
-    const statusMsg = createStatusMessage('📧 Generating and sending email...');
+    const statusMsg = createStatusMessage('📧 Generating PDF...');
     
-    // Generate PDF blob
     const htmlContent = buildInvoiceHTML(inv);
-    const pdfBlob = await generatePDFAsBlob(htmlContent, `${inv.id}-invoice.pdf`);
     
-    // Convert PDF to base64
-    const reader = new FileReader();
-    return new Promise((resolve) => {
-      reader.onload = async () => {
-        try {
-          const base64PDF = reader.result.split(',')[1];
-          
-          const totalPaid = invPayments(invId).reduce((a, p) => a + p.amount, 0);
-          const balance = inv.total - totalPaid;
-          const statusLabel = totalPaid >= inv.total ? 'PAID' : totalPaid > 0 ? 'PARTIAL' : 'UNPAID';
-
-          // Try sending via EmailJS if configured
-          if (typeof emailjs !== 'undefined' && document.getElementById('emailjs-key')?.value) {
-            await emailjs.send('service_id', 'template_id', {
-              to_email: email,
-              client_name: clientName,
-              invoice_id: inv.id,
-              invoice_date: inv.date,
-              total_amount: fmt(inv.total),
-              total_paid: fmt(totalPaid),
-              balance_due: fmt(balance),
-              status: statusLabel,
-              attachment: base64PDF,
-              invoice_html: htmlContent
-            });
+    try {
+      const pdfBlob = await generatePDFAsBlob(htmlContent, `${inv.id}-invoice.pdf`);
+      updateStatusMessage(statusMsg, '📧 Preparing email...');
+      
+      const reader = new FileReader();
+      
+      return new Promise((resolve) => {
+        const timeoutId = setTimeout(() => {
+          console.warn('Email PDF reading timeout');
+          updateStatusMessage(statusMsg, `✗ Timeout - PDF taking too long`);
+          setTimeout(() => statusMsg.remove(), 3000);
+          resolve(false);
+        }, 5000);
+        
+        reader.onload = async () => {
+          clearTimeout(timeoutId);
+          try {
+            const base64PDF = reader.result.split(',')[1];
             
-            updateStatusMessage(statusMsg, `✓ Email sent to ${email}!`);
-            resolve(true);
-          } else {
-            // Fallback: Use Supabase Edge Function or backend API
+            const totalPaid = invPayments(invId).reduce((a, p) => a + p.amount, 0);
+            const balance = inv.total - totalPaid;
+            const statusLabel = totalPaid >= inv.total ? 'PAID' : totalPaid > 0 ? 'PARTIAL' : 'UNPAID';
+
+            updateStatusMessage(statusMsg, '📤 Sending email...');
+
             const response = await fetch('/.netlify/functions/send-invoice-email', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -563,23 +573,39 @@ async function sendInvoiceAutomatedEmail(invId, email, clientName) {
               setTimeout(() => statusMsg.remove(), 3000);
               resolve(true);
             } else {
-              updateStatusMessage(statusMsg, `✓ PDF generated. Please attach manually or configure email service.`);
+              const errText = await response.text();
+              console.warn('Email send failed:', errText);
+              updateStatusMessage(statusMsg, `✗ Email service unavailable`);
               setTimeout(() => statusMsg.remove(), 3000);
               resolve(false);
             }
+          } catch (err) {
+            console.error('Email send error:', err);
+            updateStatusMessage(statusMsg, `✗ Error: ${err.message}`);
+            setTimeout(() => statusMsg.remove(), 3000);
+            resolve(false);
           }
-        } catch (err) {
-          console.error('Email sending error:', err);
-          updateStatusMessage(statusMsg, `✓ PDF generated (automated sending not configured)`);
+        };
+        
+        reader.onerror = () => {
+          clearTimeout(timeoutId);
+          console.error('FileReader error');
+          updateStatusMessage(statusMsg, `✗ PDF read failed`);
           setTimeout(() => statusMsg.remove(), 3000);
           resolve(false);
-        }
-      };
-      reader.readAsDataURL(pdfBlob);
-    });
+        };
+        
+        reader.readAsDataURL(pdfBlob);
+      });
+    } catch (pdfErr) {
+      console.error('PDF generation failed:', pdfErr);
+      updateStatusMessage(statusMsg, `✗ PDF generation failed: ${pdfErr.message}`);
+      setTimeout(() => statusMsg.remove(), 3000);
+      return false;
+    }
   } catch (err) {
-    console.error('Error:', err);
-    alert('Error sending email. Please check your email service configuration.');
+    console.error('Email error:', err);
+    alert('Error: ' + err.message);
     return false;
   }
 }
@@ -589,64 +615,115 @@ async function sendInvoiceAutomatedWhatsApp(invId, phone, clientName) {
     const inv = invoices.find(i => i.id === invId);
     if (!inv || !phone) { alert('Invoice or phone missing'); return false; }
     
-    const statusMsg = createStatusMessage('📱 Generating and sending WhatsApp...');
+    const statusMsg = createStatusMessage('📱 Generating PDF...');
     
     // Generate PDF
     const htmlContent = buildInvoiceHTML(inv);
-    const pdfBlob = await generatePDFAsBlob(htmlContent, `${inv.id}-invoice.pdf`);
-    const reader = new FileReader();
     
-    return new Promise((resolve) => {
-      reader.onload = async () => {
-        try {
-          const base64PDF = reader.result.split(',')[1];
-          
-          const totalPaid = invPayments(invId).reduce((a, p) => a + p.amount, 0);
-          const balance = inv.total - totalPaid;
-          const statusLabel = totalPaid >= inv.total ? 'PAID' : totalPaid > 0 ? 'PARTIAL' : 'UNPAID';
+    try {
+      const pdfBlob = await generatePDFAsBlob(htmlContent, `${inv.id}-invoice.pdf`);
+      updateStatusMessage(statusMsg, '📱 Preparing message...');
+      
+      // Convert PDF to base64
+      const reader = new FileReader();
+      
+      return new Promise((resolve) => {
+        const timeoutId = setTimeout(() => {
+          console.warn('PDF reading timeout');
+          // Fallback: just open WhatsApp without PDF
+          openWhatsAppFallback(phone, clientName, inv);
+          updateStatusMessage(statusMsg, `✓ Opening WhatsApp Web...`);
+          setTimeout(() => statusMsg.remove(), 2000);
+          resolve(false);
+        }, 5000);
+        
+        reader.onload = async () => {
+          clearTimeout(timeoutId);
+          try {
+            const base64PDF = reader.result.split(',')[1];
+            
+            const totalPaid = invPayments(invId).reduce((a, p) => a + p.amount, 0);
+            const balance = inv.total - totalPaid;
+            const statusLabel = totalPaid >= inv.total ? 'PAID' : totalPaid > 0 ? 'PARTIAL' : 'UNPAID';
 
-          const message = `📋 *MEJASON MEDIA - INVOICE*\n\n` +
-            `*Invoice #:* ${inv.id}\n*Date:* ${inv.date}\n*Client:* ${clientName}\n\n` +
-            `*Total:* ${fmt(inv.total)}\n*Status:* ${statusLabel}\n\n` +
-            `📎 Invoice PDF attached`;
+            const message = `📋 *MEJASON MEDIA - INVOICE*\n\n` +
+              `*Invoice #:* ${inv.id}\n*Date:* ${inv.date}\n*Client:* ${clientName}\n\n` +
+              `*Total:* ${fmt(inv.total)}\n*Status:* ${statusLabel}\n\n` +
+              `📎 Invoice PDF attached`;
 
-          // Try sending via WhatsApp API (requires Twilio or similar)
-          const response = await fetch('/.netlify/functions/send-whatsapp', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              phone: phone.replace(/\D/g, ''),
-              message,
-              pdfBase64: base64PDF,
-              fileName: `${inv.id}-invoice.pdf`
-            })
-          });
-          
-          if (response.ok) {
-            updateStatusMessage(statusMsg, `✓ WhatsApp sent to ${phone}!`);
-            setTimeout(() => statusMsg.remove(), 3000);
-            resolve(true);
-          } else {
-            // Fallback to manual WhatsApp
-            updateStatusMessage(statusMsg, `✓ PDF generated. Opening WhatsApp...`);
-            const url = `https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
-            window.open(url, '_blank');
-            setTimeout(() => statusMsg.remove(), 3000);
+            updateStatusMessage(statusMsg, '📤 Sending via WhatsApp...');
+
+            // Try sending via backend API
+            const response = await fetch('/.netlify/functions/send-whatsapp', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                phone: phone.replace(/\D/g, ''),
+                message,
+                pdfBase64: base64PDF,
+                fileName: `${inv.id}-invoice.pdf`
+              })
+            });
+            
+            if (response.ok) {
+              updateStatusMessage(statusMsg, `✓ WhatsApp sent to ${phone}!`);
+              setTimeout(() => statusMsg.remove(), 3000);
+              resolve(true);
+            } else {
+              // Fallback to WhatsApp Web link
+              console.warn('Backend send failed, using WhatsApp Web fallback');
+              updateStatusMessage(statusMsg, `✓ Opening WhatsApp Web...`);
+              openWhatsAppFallback(phone, clientName, inv);
+              setTimeout(() => statusMsg.remove(), 2000);
+              resolve(false);
+            }
+          } catch (err) {
+            console.error('WhatsApp send error:', err);
+            updateStatusMessage(statusMsg, `✓ Opening WhatsApp Web...`);
+            openWhatsAppFallback(phone, clientName, inv);
+            setTimeout(() => statusMsg.remove(), 2000);
             resolve(false);
           }
-        } catch (err) {
-          console.error('WhatsApp sending error:', err);
-          updateStatusMessage(statusMsg, `✓ PDF generated`);
-          setTimeout(() => statusMsg.remove(), 3000);
+        };
+        
+        reader.onerror = () => {
+          clearTimeout(timeoutId);
+          console.error('FileReader error');
+          updateStatusMessage(statusMsg, `✓ Opening WhatsApp Web...`);
+          openWhatsAppFallback(phone, clientName, inv);
+          setTimeout(() => statusMsg.remove(), 2000);
           resolve(false);
-        }
-      };
-      reader.readAsDataURL(pdfBlob);
-    });
+        };
+        
+        reader.readAsDataURL(pdfBlob);
+      });
+    } catch (pdfErr) {
+      console.error('PDF generation failed:', pdfErr);
+      updateStatusMessage(statusMsg, `✓ Opening WhatsApp Web (PDF failed)...`);
+      openWhatsAppFallback(phone, clientName, inv);
+      setTimeout(() => statusMsg.remove(), 2000);
+      return false;
+    }
   } catch (err) {
-    console.error('Error:', err);
+    console.error('WhatsApp error:', err);
+    alert('Error: ' + err.message);
     return false;
   }
+}
+
+function openWhatsAppFallback(phone, clientName, inv) {
+  const totalPaid = invPayments(inv.id).reduce((a, p) => a + p.amount, 0);
+  const statusLabel = totalPaid >= inv.total ? 'PAID' : totalPaid > 0 ? 'PARTIAL' : 'UNPAID';
+  
+  const message = `📋 *MEJASON MEDIA - INVOICE*\n\n` +
+    `*Invoice #:* ${inv.id}\n*Date:* ${inv.date}\n*Client:* ${clientName}\n\n` +
+    `*Total:* ${fmt(inv.total)}\n*Status:* ${statusLabel}\n\n` +
+    `📎 Please request invoice PDF if needed.`;
+  
+  const cleanPhone = phone.replace(/\D/g, '');
+  const countryCode = cleanPhone.startsWith('254') ? cleanPhone : '254' + cleanPhone.slice(1);
+  const url = `https://wa.me/${countryCode}?text=${encodeURIComponent(message)}`;
+  window.open(url, '_blank');
 }
 
 function createStatusMessage(text) {
