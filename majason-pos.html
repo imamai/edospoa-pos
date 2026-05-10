@@ -1587,8 +1587,6 @@ async function sendInvoiceViaWhatsApp(invId, phone, clientName) {
 // ── EMAIL ────────────────────────────────────────────────
 async function sendInvoiceViaEmail(invId, email, clientName) {
   await sendInvoiceAutomatedEmail(invId, email, clientName);
-    setTimeout(() => { statusMsg.remove(); }, 3000);
-  });
 }
 
 // ── INVOICES PAGE ────────────────────────────────────────
