@@ -1178,6 +1178,7 @@ async function epFinalLogin() {
   const shopEl = document.getElementById('tb-shop-name');
   if (shopEl) shopEl.textContent = currentShopName || currentShopId;
 
+  await loadShopSettings();
   buildSidebar();
   initShopSession(currentShopId);
   await loadFromSupabase();
@@ -1330,10 +1331,33 @@ const SETTINGS_DEFAULTS = {
   email: 'mejasanw@gmail.com',
   website: 'www.mejasonmedia.co.ke',
 };
-let SETTINGS = (() => {
-  try { return { ...SETTINGS_DEFAULTS, ...JSON.parse(localStorage.getItem('mmp_settings') || '{}') }; }
-  catch { return { ...SETTINGS_DEFAULTS }; }
-})();
+let SETTINGS = { ...SETTINGS_DEFAULTS };
+
+async function loadShopSettings() {
+  if (!useSupabase || !currentShopId) return;
+  try {
+    const { data } = await sb.from('pos_shop_settings').select('settings').eq('shop_id', currentShopId).single();
+    if (data && data.settings) {
+      SETTINGS = { ...SETTINGS_DEFAULTS, ...data.settings };
+      return;
+    }
+  } catch(e) {}
+  // Fallback: try shop-namespaced localStorage (migration from old key)
+  try {
+    const cached = localStorage.getItem('mmp_settings_' + currentShopId) || localStorage.getItem('mmp_settings');
+    if (cached) SETTINGS = { ...SETTINGS_DEFAULTS, ...JSON.parse(cached) };
+  } catch(e) {}
+}
+
+async function persistShopSettings() {
+  if (!useSupabase || !currentShopId) return;
+  try {
+    await sb.from('pos_shop_settings').upsert({ shop_id: currentShopId, settings: SETTINGS, updated_at: new Date().toISOString() });
+    localStorage.setItem('mmp_settings_' + currentShopId, JSON.stringify(SETTINGS));
+  } catch(e) {
+    localStorage.setItem('mmp_settings_' + currentShopId, JSON.stringify(SETTINGS));
+  }
+}
 
 // State
 let cart = [], payMethod = 'cash', invoices = [], clients = [], payments = [];
@@ -3483,7 +3507,7 @@ function renderSettings() {
     </div>`;
 }
 
-function saveSettings() {
+async function saveSettings() {
   const fields = ['bizName','bizLocation','bizPhone1','bizPhone2','bizPhone3',
     'mpesaPaybill','mpesaAccount','mpesaTill',
     'bankName','bankAccount','bankHolder','bankBranch',
@@ -3492,7 +3516,7 @@ function saveSettings() {
     const el = document.getElementById('set-' + k);
     if (el) SETTINGS[k] = el.value.trim();
   });
-  localStorage.setItem('mmp_settings', JSON.stringify(SETTINGS));
+  await persistShopSettings();
   const msg = document.getElementById('settings-saved-msg');
   if (msg) { msg.style.display = 'inline-flex'; setTimeout(() => msg.style.display = 'none', 2500); }
 }
@@ -3502,9 +3526,9 @@ function handleLogoUpload(input) {
   if (!file) return;
   if (file.size > 2 * 1024 * 1024) { alert('Logo file must be under 2 MB.'); return; }
   const reader = new FileReader();
-  reader.onload = e => {
+  reader.onload = async e => {
     SETTINGS.logoDataUrl = e.target.result;
-    localStorage.setItem('mmp_settings', JSON.stringify(SETTINGS));
+    await persistShopSettings();
     const preview = document.getElementById('logo-preview');
     if (preview) preview.innerHTML = '<img src="' + e.target.result + '" style="max-height:60px;max-width:84px;object-fit:contain"/>';
     const btn = document.getElementById('logo-remove-btn');
@@ -3513,9 +3537,9 @@ function handleLogoUpload(input) {
   reader.readAsDataURL(file);
 }
 
-function removeLogo() {
+async function removeLogo() {
   SETTINGS.logoDataUrl = '';
-  localStorage.setItem('mmp_settings', JSON.stringify(SETTINGS));
+  await persistShopSettings();
   renderSettings();
 }
 
