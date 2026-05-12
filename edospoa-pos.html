@@ -365,6 +365,14 @@ create policy "allow all" on payments for all using (true) with check (true);</p
           <div><label>Event Type</label><input id="cl-event" placeholder="e.g. Wedding, Graduation…"/></div>
           <div><label>Birthday</label><input type="date" id="cl-birthday"/></div>
         </div>
+        <div><label>Referred By (Referral Code)</label><input id="cl-referredby" placeholder="e.g. REF-JO4X2A — leave blank if none"/></div>
+        <div id="cl-refcode-row" style="display:none;background:#f8f8f6;border:1px solid var(--border);border-radius:7px;padding:8px 10px">
+          <div style="font-size:10px;color:var(--muted);margin-bottom:2px">This Client's Referral Code <span style="font-size:9px">(auto-generated — share with clients they refer)</span></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span id="cl-refcode-val" style="font-family:monospace;font-size:14px;font-weight:700;color:var(--blue);letter-spacing:1px"></span>
+            <button type="button" class="btn btn-sm btn-outline" style="padding:2px 8px;font-size:10px" onclick="navigator.clipboard.writeText(document.getElementById('cl-refcode-val').textContent)"><i class="ti ti-copy"></i> Copy</button>
+          </div>
+        </div>
         <div><label>Notes</label><textarea id="cl-notes" rows="2" style="resize:none"></textarea></div>
         <button class="btn btn-red" onclick="saveClient()"><i class="ti ti-check"></i> Save Client</button>
       </div>
@@ -471,6 +479,13 @@ const now = () => new Date();
 const dateStr = d => (d || now()).toLocaleDateString('en-KE', {day:'2-digit', month:'short', year:'numeric'});
 const timeStr = d => (d || now()).toLocaleTimeString('en-KE', {hour:'2-digit', minute:'2-digit'});
 const uid = () => Math.random().toString(36).slice(2, 8).toUpperCase();
+function genReferralCode(name) {
+  const prefix = (name || 'CL').replace(/[^a-zA-Z]/g, '').slice(0, 2).toUpperCase().padEnd(2, 'X');
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 4; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return 'REF-' + prefix + code;
+}
 
 // ── SUPABASE ────────────────────────────────────────────
 let sb = null, useSupabase = false;
@@ -539,7 +554,7 @@ function showDbBadge(connected) {
 // ── DB HELPERS ─────────────────────────────────────────
 async function dbInsertClient(c) {
   if (!useSupabase) return;
-  await sb.from('clients').upsert({ id: c.id, name: c.name, phone: c.phone, email: c.email, event: c.event, birthday: c.birthday || null, notes: c.notes, created_at: c.createdAt });
+  await sb.from('clients').upsert({ id: c.id, name: c.name, phone: c.phone, email: c.email, event: c.event, birthday: c.birthday || null, notes: c.notes, referral_code: c.referral_code || null, referred_by: c.referred_by || null, created_at: c.createdAt });
 }
 async function dbInsertInvoice(inv) {
   if (!useSupabase) return;
@@ -1461,9 +1476,8 @@ function renderPOS() {
             <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:11px;color:var(--text);font-weight:400"><input type="checkbox" id="send-email" checked/> Email</label>
             <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:11px;color:var(--text);font-weight:400"><input type="checkbox" id="send-whatsapp"/> WhatsApp</label>
           </div>
-          <div class="cart-row-info">
-            <div><label>Event Date</label><input type="date" id="cart-date" value="${now().toISOString().slice(0,10)}"/></div>
-            <div><label>Date of Birth</label><input type="date" id="cart-dob" placeholder="Client DOB"/></div>
+          <div>
+            <label>Event Date</label><input type="date" id="cart-date" value="${now().toISOString().slice(0,10)}"/>
           </div>
           <div>
             <label>Discount %</label><input type="number" id="disc-pct" placeholder="0" min="0" max="100" oninput="recalc()"/>
@@ -1635,31 +1649,18 @@ async function checkout() {
   const clientEmail  = document.getElementById('cart-cemail')?.value.trim();
   const clientWA     = document.getElementById('cart-cwhatsapp')?.value.trim();
   const eventDate    = document.getElementById('cart-date')?.value;
-  const clientDOB    = document.getElementById('cart-dob')?.value || null;
   const sendEmail    = document.getElementById('send-email')?.checked;
   const sendWhatsApp = document.getElementById('send-whatsapp')?.checked;
 
   if (!clientName) clientName = 'Walk-in #' + uid();
 
-  // Auto-create or update client from POS fields
-  if (clientSel) {
-    // Selected existing client — update birthday if newly captured
-    if (clientDOB) {
-      const existing = clients.find(c => c.id === clientSel);
-      if (existing && !existing.birthday) {
-        existing.birthday = clientDOB;
-        await dbInsertClient(existing);
-      }
-    }
-  } else if (clientPhone) {
+  // Auto-create client record from POS fields if phone supplied and not already known
+  if (!clientSel && clientPhone) {
     const existing = clients.find(c => c.phone === clientPhone);
     if (!existing) {
-      const nc = { id: uid(), name: clientName, phone: clientPhone, email: clientEmail || '', event: '', birthday: clientDOB, notes: '', createdAt: dateStr() };
+      const nc = { id: uid(), name: clientName, phone: clientPhone, email: clientEmail || '', event: '', birthday: null, notes: '', referral_code: null, referred_by: null, createdAt: dateStr() };
       clients.push(nc);
       await dbInsertClient(nc);
-    } else if (clientDOB && !existing.birthday) {
-      existing.birthday = clientDOB;
-      await dbInsertClient(existing);
     }
   }
 
@@ -2137,7 +2138,7 @@ function renderClients() {
         <div class="search-bar" style="width:260px;margin:0"><i class="ti ti-search"></i><input placeholder="Search clients…" value="${clientSearch}" oninput="clientSearch=this.value;renderClients()"/></div>
         <span style="font-size:11px;color:var(--muted)">${list.length} client${list.length !== 1 ? 's' : ''}</span>
       </div>
-      <button class="btn btn-red btn-sm" onclick="openModal('client-modal')"><i class="ti ti-plus"></i> Add Client</button>
+      <button class="btn btn-red btn-sm" onclick="openNewClientModal()"><i class="ti ti-plus"></i> Add Client</button>
     </div>
     <div class="card" style="padding:0;overflow:hidden">
       ${!list.length
@@ -2151,10 +2152,12 @@ function renderClients() {
                 <th>Email</th>
                 <th>Birthday</th>
                 <th>Event</th>
+                <th>Ref. Code</th>
+                <th>Referred By</th>
                 <th>Billed</th>
                 <th>Balance</th>
                 <th>Inv.</th>
-                <th style="width:70px"></th>
+                <th style="width:50px"></th>
               </tr>
             </thead>
             <tbody>
@@ -2164,6 +2167,8 @@ function renderClients() {
                 const total = cInvs.reduce((a, i) => a + i.total, 0);
                 const balance = cInvs.reduce((a, i) => a + invBalance(i), 0);
                 const bdStr = c.birthday ? new Date(c.birthday + 'T00:00:00').toLocaleDateString('en-KE', {day:'2-digit',month:'short'}) : '—';
+                const referrer = c.referred_by ? clients.find(r => r.referral_code === c.referred_by) : null;
+                const referrerLabel = referrer ? referrer.name : (c.referred_by || '—');
                 return `<tr>
                   <td>
                     <div style="width:30px;height:30px;border-radius:50%;background:var(--red);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;color:#fff">${initials}</div>
@@ -2173,19 +2178,26 @@ function renderClients() {
                   <td style="color:var(--muted)">${c.email || '—'}</td>
                   <td>${bdStr}</td>
                   <td style="color:var(--muted)">${c.event || '—'}</td>
+                  <td><span style="font-family:monospace;font-size:11px;color:var(--blue);font-weight:600">${c.referral_code || '—'}</span></td>
+                  <td style="font-size:11px;color:var(--muted)">${referrerLabel}</td>
                   <td style="font-weight:600">${fmt(total)}</td>
                   <td style="font-weight:600;color:${balance > 0 ? '#dc2626' : 'var(--green)'}">${fmt(balance)}</td>
                   <td style="text-align:center">${cInvs.length}</td>
                   <td>
-                    <div style="display:flex;gap:4px">
-                      <button class="btn btn-sm btn-outline" style="padding:3px 7px" onclick="openEditClient('${c.id}')" title="Edit"><i class="ti ti-pencil" style="font-size:11px"></i></button>
-                    </div>
+                    <button class="btn btn-sm btn-outline" style="padding:3px 7px" onclick="openEditClient('${c.id}')" title="Edit"><i class="ti ti-pencil" style="font-size:11px"></i></button>
                   </td>
                 </tr>`;
               }).join('')}
             </tbody>
           </table>`}
     </div>`;
+}
+
+function openNewClientModal() {
+  ['cl-name','cl-phone','cl-email','cl-event','cl-birthday','cl-notes','cl-referredby'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  document.getElementById('cl-refcode-row').style.display = 'none';
+  document.getElementById('client-modal').dataset.editId = '';
+  openModal('client-modal');
 }
 
 function openEditClient(id) {
@@ -2196,7 +2208,16 @@ function openEditClient(id) {
   document.getElementById('cl-event').value = c.event || '';
   document.getElementById('cl-birthday').value = c.birthday || '';
   document.getElementById('cl-notes').value = c.notes || '';
-  // Store editing id on the modal
+  document.getElementById('cl-referredby').value = c.referred_by || '';
+  // Show referral code if client has one
+  const refRow = document.getElementById('cl-refcode-row');
+  const refVal = document.getElementById('cl-refcode-val');
+  if (c.referral_code) {
+    refVal.textContent = c.referral_code;
+    refRow.style.display = 'block';
+  } else {
+    refRow.style.display = 'none';
+  }
   document.getElementById('client-modal').dataset.editId = id;
   openModal('client-modal');
 }
@@ -2207,26 +2228,35 @@ async function saveClient() {
   if (!name) { alert('Name is required.'); return; }
   const modal = document.getElementById('client-modal');
   const editId = modal.dataset.editId || '';
-  const birthday = document.getElementById('cl-birthday').value || null;
-  const email = document.getElementById('cl-email').value.trim();
-  const event = document.getElementById('cl-event').value.trim();
-  const notes = document.getElementById('cl-notes').value.trim();
+  const birthday    = document.getElementById('cl-birthday').value || null;
+  const email       = document.getElementById('cl-email').value.trim();
+  const event       = document.getElementById('cl-event').value.trim();
+  const notes       = document.getElementById('cl-notes').value.trim();
+  const referredBy  = document.getElementById('cl-referredby').value.trim() || null;
 
   if (editId) {
     const existing = clients.find(c => c.id === editId);
     if (existing) {
       existing.name = name; existing.phone = phone; existing.email = email;
       existing.event = event; existing.birthday = birthday; existing.notes = notes;
+      existing.referred_by = referredBy;
+      // Auto-generate referral code when birthday is added for the first time
+      if (birthday && !existing.referral_code) {
+        existing.referral_code = genReferralCode(name);
+      }
       await dbInsertClient(existing);
     }
   } else {
-    const c = { id: uid(), name, phone, email, event, birthday, notes, createdAt: dateStr() };
+    // New client: generate referral code if DOB provided
+    const refCode = birthday ? genReferralCode(name) : null;
+    const c = { id: uid(), name, phone, email, event, birthday, notes, referral_code: refCode, referred_by: referredBy, createdAt: dateStr() };
     clients.push(c);
     await dbInsertClient(c);
   }
   modal.dataset.editId = '';
   closeModal('client-modal');
-  ['cl-name','cl-phone','cl-email','cl-event','cl-birthday','cl-notes'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  ['cl-name','cl-phone','cl-email','cl-event','cl-birthday','cl-notes','cl-referredby'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  document.getElementById('cl-refcode-row').style.display = 'none';
   renderClients();
 }
 
@@ -2318,7 +2348,10 @@ function deleteInventoryItem(id) {
 
 // ── ANALYTICS ────────────────────────────────────────────
 let activeTopClientDept = 'all';
-let bdayWindowDays = 3;
+// Birthday filter: mode = 'today' | 'window' | 'custom'
+let bdayFilterMode = 'window';
+let bdayWindowDays = 7;
+let bdayCustomFrom = '', bdayCustomTo = '';
 
 function renderAnalytics() {
   const filtered = filterByPeriod(invoices);
@@ -2372,7 +2405,7 @@ function renderAnalytics() {
   }
 
   // Upcoming birthdays
-  const bdays = getUpcomingBirthdays(bdayWindowDays);
+  const bdays = getFilteredBirthdays();
 
   // Period label for export filename
   const pRangeLabel = periodFrom || periodTo
@@ -2499,17 +2532,78 @@ function renderAnalytics() {
           </table>`}
     </div>
 
+    <!-- Top Referrers -->
+    <div id="rpt-referrers" class="card" style="margin-bottom:14px">
+      ${(() => {
+        // Build referral counts: for each client with a referral_code, count how many clients have referred_by === that code
+        const referralCounts = {};
+        clients.forEach(c => {
+          if (c.referred_by) {
+            referralCounts[c.referred_by] = (referralCounts[c.referred_by] || 0) + 1;
+          }
+        });
+        const topReferrers = Object.entries(referralCounts).sort((a, b) => b[1] - a[1]).slice(0, 10);
+        // Compute revenue brought in by each referrer's referrals
+        function referralRevenue(refCode) {
+          const referredClients = clients.filter(c => c.referred_by === refCode);
+          return referredClients.reduce((sum, c) => {
+            return sum + filtered.filter(inv => inv.clientPhone === c.phone || inv.clientId === c.id).reduce((s, inv) => s + inv.total, 0);
+          }, 0);
+        }
+        return `
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div class="card-title" style="margin:0"><i class="ti ti-users-group" style="color:var(--purple)"></i> Top Referrers</div>
+          <span style="font-size:10px;color:var(--muted)">${topReferrers.length} active referrer${topReferrers.length !== 1 ? 's' : ''}</span>
+        </div>
+        ${!topReferrers.length
+          ? '<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px"><i class="ti ti-share" style="font-size:24px;display:block;margin-bottom:6px;opacity:.3"></i>No referrals recorded yet — clients earn a referral code when their birthday is saved</div>'
+          : `<table class="table" style="width:100%">
+              <thead><tr>
+                <th style="width:36px">#</th>
+                <th>Referrer</th>
+                <th>Phone</th>
+                <th>Ref. Code</th>
+                <th style="text-align:right">Referrals</th>
+                <th style="text-align:right">Revenue from Referrals</th>
+              </tr></thead>
+              <tbody>
+                ${topReferrers.map(([refCode, count], idx) => {
+                  const referrer = clients.find(c => c.referral_code === refCode);
+                  const rev = referralRevenue(refCode);
+                  const medalColors = ['#f59e0b','#9ca3af','#92400e'];
+                  return `<tr>
+                    <td><div style="width:24px;height:24px;border-radius:50%;background:${medalColors[idx]||'#d1d5db'};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#fff">${idx+1}</div></td>
+                    <td style="font-weight:600">${referrer ? referrer.name : '—'}</td>
+                    <td>${referrer?.phone ? `<a href="tel:${referrer.phone}" style="color:var(--blue);text-decoration:none">${referrer.phone}</a>` : '—'}</td>
+                    <td><span style="font-family:monospace;font-size:11px;color:var(--purple);font-weight:700">${refCode}</span></td>
+                    <td style="text-align:right;font-weight:700">${count}</td>
+                    <td style="text-align:right;font-weight:700;color:var(--green)">${fmt(rev)}</td>
+                  </tr>`;
+                }).join('')}
+              </tbody>
+            </table>`}`;
+      })()}
+    </div>
+
     <!-- Upcoming Birthdays -->
     <div id="rpt-birthdays" class="card" style="margin-bottom:14px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:6px">
         <div class="card-title" style="margin:0"><i class="ti ti-cake" style="color:#ec4899"></i> Upcoming Birthdays</div>
-        <div style="display:flex;align-items:center;gap:6px">
-          <span style="font-size:10px;color:var(--muted)">Next</span>
-          ${[3,7,14,30].map(d => `<button onclick="setBdayWindow(${d})" class="btn btn-sm ${bdayWindowDays===d?'btn-red':'btn-outline'}" style="font-size:10px;padding:3px 9px">${d}d</button>`).join('')}
+        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:5px">
+          <button onclick="bdayFilterMode='today';renderAnalytics()" class="btn btn-sm ${bdayFilterMode==='today'?'btn-red':'btn-outline'}" style="font-size:10px;padding:3px 9px"><i class="ti ti-confetti" style="font-size:10px"></i> Today</button>
+          <button onclick="bdayFilterMode='window';bdayWindowDays=7;renderAnalytics()" class="btn btn-sm ${bdayFilterMode==='window'&&bdayWindowDays===7?'btn-red':'btn-outline'}" style="font-size:10px;padding:3px 9px">Next 7d</button>
+          <button onclick="bdayFilterMode='window';bdayWindowDays=30;renderAnalytics()" class="btn btn-sm ${bdayFilterMode==='window'&&bdayWindowDays===30?'btn-red':'btn-outline'}" style="font-size:10px;padding:3px 9px">Next 30d</button>
+          <button onclick="bdayFilterMode='custom';renderAnalytics()" class="btn btn-sm ${bdayFilterMode==='custom'?'btn-red':'btn-outline'}" style="font-size:10px;padding:3px 9px"><i class="ti ti-calendar-event" style="font-size:10px"></i> Custom</button>
         </div>
       </div>
+      ${bdayFilterMode==='custom' ? `
+      <div style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap;margin-bottom:10px;padding:8px 10px;background:#f8f8f6;border-radius:7px;border:1px solid var(--border)">
+        <div><label style="font-size:10px;color:var(--muted)">From Date</label><input type="date" id="bday-from" value="${bdayCustomFrom}" style="width:145px;padding:5px 8px;border-radius:6px;border:1px solid var(--border);font-size:12px" onchange="bdayCustomFrom=this.value;renderAnalytics()"/></div>
+        <div><label style="font-size:10px;color:var(--muted)">To Date</label><input type="date" id="bday-to" value="${bdayCustomTo}" style="width:145px;padding:5px 8px;border-radius:6px;border:1px solid var(--border);font-size:12px" onchange="bdayCustomTo=this.value;renderAnalytics()"/></div>
+        <button class="btn btn-sm btn-outline" onclick="bdayCustomFrom='';bdayCustomTo='';renderAnalytics()" style="font-size:10px"><i class="ti ti-x"></i> Clear</button>
+      </div>` : ''}
       ${!bdays.length
-        ? `<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px"><i class="ti ti-cake" style="font-size:24px;display:block;margin-bottom:6px;opacity:.3"></i>No birthdays in the next ${bdayWindowDays} days</div>`
+        ? `<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px"><i class="ti ti-cake" style="font-size:24px;display:block;margin-bottom:6px;opacity:.3"></i>No birthdays match the selected filter</div>`
         : `<table class="table" style="width:100%">
             <thead><tr><th>Client</th><th>Phone</th><th>Birthday</th><th>Age</th><th>In</th><th>Event</th><th style="text-align:right">Lifetime Spend</th></tr></thead>
             <tbody>
@@ -2550,18 +2644,31 @@ function renderAnalytics() {
 }
 
 function setTopClientDept(d) { activeTopClientDept = d; renderAnalytics(); }
-function setBdayWindow(d) { bdayWindowDays = d; renderAnalytics(); }
 
-// Returns clients with birthdays within the next `days` days (including today)
-function getUpcomingBirthdays(days) {
+// Returns clients with upcoming birthdays filtered by current bdayFilterMode
+function getFilteredBirthdays() {
   const today = new Date(); today.setHours(0,0,0,0);
-  return clients.filter(c => c.birthday).map(c => {
+  const mapped = clients.filter(c => c.birthday).map(c => {
     const bd = new Date(c.birthday + 'T00:00:00');
     let next = new Date(today.getFullYear(), bd.getMonth(), bd.getDate());
     if (next < today) next = new Date(today.getFullYear() + 1, bd.getMonth(), bd.getDate());
     const diffDays = Math.round((next - today) / 86400000);
-    return { ...c, daysUntil: diffDays };
-  }).filter(c => c.daysUntil <= days).sort((a, b) => a.daysUntil - b.daysUntil);
+    return { ...c, daysUntil: diffDays, nextBirthday: next };
+  });
+  if (bdayFilterMode === 'today') {
+    return mapped.filter(c => c.daysUntil === 0);
+  }
+  if (bdayFilterMode === 'custom' && (bdayCustomFrom || bdayCustomTo)) {
+    const from = bdayCustomFrom ? new Date(bdayCustomFrom + 'T00:00:00') : null;
+    const to   = bdayCustomTo   ? new Date(bdayCustomTo   + 'T23:59:59') : null;
+    return mapped.filter(c => {
+      if (from && c.nextBirthday < from) return false;
+      if (to   && c.nextBirthday > to)   return false;
+      return true;
+    }).sort((a, b) => a.daysUntil - b.daysUntil);
+  }
+  // Default: window mode
+  return mapped.filter(c => c.daysUntil <= bdayWindowDays).sort((a, b) => a.daysUntil - b.daysUntil);
 }
 
 function exportReportCSV() {
