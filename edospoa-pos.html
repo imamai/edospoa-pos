@@ -1250,6 +1250,7 @@ let INVENTORY = (() => {
 
 // ── SETTINGS object — persisted to localStorage ─────────
 const SETTINGS_DEFAULTS = {
+  logoDataUrl: '',
   bizName: 'Mejason Media Production',
   bizLocation: 'Joventure Hotel, 1st Floor, Kibos Rd, Kisumu',
   bizPhone1: '+254 700 864849',
@@ -1918,8 +1919,9 @@ function buildInvoiceHTML(inv) {
   return `<div class="inv-wrap">
     <div class="inv-header">
       <div class="inv-logo-block">
-        <div class="inv-logo-mark">M</div>
-        <div class="inv-logo-tagline">Mejasan Media</div>
+        ${S.logoDataUrl
+          ? `<img src="${S.logoDataUrl}" style="max-height:64px;max-width:180px;object-fit:contain;display:block"/>`
+          : `<div class="inv-logo-mark">M</div><div class="inv-logo-tagline">Mejasan Media</div>`}
       </div>
       <div class="inv-title-block">
         <h1>INVOICE</h1>
@@ -3259,6 +3261,27 @@ function renderSettings() {
       <div class="card">
         <div class="card-title"><i class="ti ti-building" style="color:var(--red)"></i> Business Info</div>
         <div style="display:grid;gap:10px">
+          <div>
+            <label>Business Logo</label>
+            <div style="display:flex;align-items:center;gap:12px;margin-top:6px">
+              <div id="logo-preview" style="width:88px;height:64px;border:1.5px dashed #ccc;border-radius:6px;display:flex;align-items:center;justify-content:center;background:#fafafa;overflow:hidden;flex-shrink:0">
+                ${s.logoDataUrl
+                  ? '<img src="' + s.logoDataUrl + '" style="max-height:60px;max-width:84px;object-fit:contain"/>'
+                  : '<span style="font-size:10px;color:#bbb;text-align:center;line-height:1.5">No<br/>logo</span>'}
+              </div>
+              <div style="display:grid;gap:6px">
+                <label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0;display:inline-flex;align-items:center;gap:6px">
+                  <i class="ti ti-upload"></i> Upload Logo
+                  <input type="file" accept="image/*" style="display:none" onchange="handleLogoUpload(this)"/>
+                </label>
+                <button class="btn btn-sm" id="logo-remove-btn" onclick="removeLogo()"
+                  style="background:#fee2e2;color:#dc2626;border:none;${s.logoDataUrl ? '' : 'display:none'}">
+                  <i class="ti ti-trash"></i> Remove
+                </button>
+              </div>
+              <span style="font-size:10px;color:#aaa;line-height:1.7">PNG, JPG or SVG<br/>Max 2 MB<br/>Best: 200 × 80 px</span>
+            </div>
+          </div>
           <div><label>Business Name</label><input id="set-bizName" value="${s.bizName}"/></div>
           <div><label>Location</label><input id="set-bizLocation" value="${s.bizLocation}"/></div>
           <div><label>Phone 1</label><input id="set-bizPhone1" value="${s.bizPhone1}"/></div>
@@ -3326,6 +3349,28 @@ function saveSettings() {
   localStorage.setItem('mmp_settings', JSON.stringify(SETTINGS));
   const msg = document.getElementById('settings-saved-msg');
   if (msg) { msg.style.display = 'inline-flex'; setTimeout(() => msg.style.display = 'none', 2500); }
+}
+
+function handleLogoUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) { alert('Logo file must be under 2 MB.'); return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    SETTINGS.logoDataUrl = e.target.result;
+    localStorage.setItem('mmp_settings', JSON.stringify(SETTINGS));
+    const preview = document.getElementById('logo-preview');
+    if (preview) preview.innerHTML = '<img src="' + e.target.result + '" style="max-height:60px;max-width:84px;object-fit:contain"/>';
+    const btn = document.getElementById('logo-remove-btn');
+    if (btn) btn.style.display = 'inline-flex';
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeLogo() {
+  SETTINGS.logoDataUrl = '';
+  localStorage.setItem('mmp_settings', JSON.stringify(SETTINGS));
+  renderSettings();
 }
 
 // ── SERVICES MANAGEMENT ──────────────────────────────────
