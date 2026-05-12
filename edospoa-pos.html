@@ -8,6 +8,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script async src="https://cdn.emailjs.com/dist/email.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',system-ui,sans-serif}
@@ -360,7 +361,10 @@ create policy "allow all" on payments for all using (true) with check (true);</p
           <div><label>Phone *</label><input id="cl-phone" placeholder="+254 7XX XXX XXX"/></div>
           <div><label>Email</label><input id="cl-email" placeholder="client@email.com"/></div>
         </div>
-        <div><label>Event Type</label><input id="cl-event" placeholder="e.g. Wedding, Graduation…"/></div>
+        <div class="two-col">
+          <div><label>Event Type</label><input id="cl-event" placeholder="e.g. Wedding, Graduation…"/></div>
+          <div><label>Birthday</label><input type="date" id="cl-birthday"/></div>
+        </div>
         <div><label>Notes</label><textarea id="cl-notes" rows="2" style="resize:none"></textarea></div>
         <button class="btn btn-red" onclick="saveClient()"><i class="ti ti-check"></i> Save Client</button>
       </div>
@@ -429,6 +433,32 @@ create policy "allow all" on payments for all using (true) with check (true);</p
         <button class="btn btn-outline btn-sm" onclick="closeModal('edit-user-modal')"><i class="ti ti-x"></i></button>
       </div>
       <div style="padding:18px" id="edit-user-modal-body"></div>
+    </div>
+  </div>
+
+  <!-- Inventory Item Modal -->
+  <div class="modal-bg" id="inv-item-modal">
+    <div class="modal" style="width:440px">
+      <div class="modal-hdr">
+        <span><i class="ti ti-package" style="color:var(--red)"></i> <span id="inv-item-modal-title">Add Inventory Item</span></span>
+        <button class="btn btn-outline btn-sm" onclick="closeModal('inv-item-modal')"><i class="ti ti-x"></i></button>
+      </div>
+      <div style="padding:18px;display:grid;gap:10px">
+        <input type="hidden" id="inv-edit-id"/>
+        <div><label>Item Name *</label><input id="inv-name-in" placeholder="e.g. HD Cameras"/></div>
+        <div class="two-col">
+          <div><label>Total Quantity *</label><input type="number" id="inv-total-in" min="0" placeholder="0"/></div>
+          <div><label>Available *</label><input type="number" id="inv-avail-in" min="0" placeholder="0"/></div>
+        </div>
+        <div class="two-col">
+          <div><label>Unit</label><input id="inv-unit-in" placeholder="units / sets / rolls…"/></div>
+          <div><label>Department</label><select id="inv-dept-in"><option value="">— Select —</option></select></div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-red" style="flex:1;justify-content:center" onclick="saveInventoryItem()"><i class="ti ti-check"></i> Save Item</button>
+          <button class="btn btn-outline" onclick="closeModal('inv-item-modal')">Cancel</button>
+        </div>
+      </div>
     </div>
   </div>
 </div><!-- end #app -->
@@ -509,7 +539,7 @@ function showDbBadge(connected) {
 // ── DB HELPERS ─────────────────────────────────────────
 async function dbInsertClient(c) {
   if (!useSupabase) return;
-  await sb.from('clients').upsert({ id: c.id, name: c.name, phone: c.phone, email: c.email, event: c.event, notes: c.notes, created_at: c.createdAt });
+  await sb.from('clients').upsert({ id: c.id, name: c.name, phone: c.phone, email: c.email, event: c.event, birthday: c.birthday || null, notes: c.notes, created_at: c.createdAt });
 }
 async function dbInsertInvoice(inv) {
   if (!useSupabase) return;
@@ -796,7 +826,7 @@ async function loadFromSupabase() {
       sb.from('invoices').select('*').order('created_at', { ascending: false }),
       sb.from('payments').select('*'),
     ]);
-    if (cls) clients = cls.map(r => ({ id: r.id, name: r.name, phone: r.phone, email: r.email, event: r.event, notes: r.notes, createdAt: r.created_at }));
+    if (cls) clients = cls.map(r => ({ id: r.id, name: r.name, phone: r.phone, email: r.email, event: r.event, birthday: r.birthday || null, notes: r.notes, createdAt: r.created_at }));
     if (invs) invoices = invs.map(r => r.data);
     if (pays) payments = pays.map(r => ({ id: r.id, invoiceId: r.invoice_id, amount: parseFloat(r.amount), method: r.method, note: r.note, paidAt: r.paid_at }));
   } catch (e) { console.warn('Supabase load error', e); }
@@ -1145,23 +1175,54 @@ let SERVICES = [
   { id:'p5',  dept:'passport',   name:'KCSE Passport (10 pcs)', desc:'Exam board size',                                           price:250    },
 ];
 
-const INVENTORY = [
-  { icon:'ti-camera',        name:'HD Cameras',       dept:'equipment', total:3,  avail:2, unit:'units' },
-  { icon:'ti-camera',        name:'4K Cameras',       dept:'equipment', total:2,  avail:1, unit:'units' },
-  { icon:'ti-drone',         name:'Drones',           dept:'equipment', total:1,  avail:1, unit:'units' },
-  { icon:'ti-device-camera', name:'Photo Cameras',    dept:'equipment', total:4,  avail:3, unit:'units' },
-  { icon:'ti-bulb',          name:'Photo Lights',     dept:'equipment', total:6,  avail:4, unit:'sets'  },
-  { icon:'ti-bulb',          name:'Video Lights',     dept:'equipment', total:4,  avail:2, unit:'sets'  },
-  { icon:'ti-usb',           name:'Flash Disks 64GB', dept:'equipment', total:10, avail:7, unit:'units' },
-  { icon:'ti-book',          name:'Photobooks 8x12',  dept:'studio',    total:5,  avail:3, unit:'units' },
-  { icon:'ti-book',          name:'Photobooks 12x12', dept:'studio',    total:5,  avail:5, unit:'units' },
-  { icon:'ti-book',          name:'Signage Books',    dept:'studio',    total:3,  avail:2, unit:'units' },
-];
+let INVENTORY = (() => {
+  try {
+    const saved = JSON.parse(localStorage.getItem('mmp_inventory') || 'null');
+    if (saved && saved.length) return saved;
+  } catch {}
+  return [
+    { id:'inv-1', icon:'ti-camera',        name:'HD Cameras',       dept:'equipment', total:3,  avail:2, unit:'units' },
+    { id:'inv-2', icon:'ti-camera',        name:'4K Cameras',       dept:'equipment', total:2,  avail:1, unit:'units' },
+    { id:'inv-3', icon:'ti-drone',         name:'Drones',           dept:'equipment', total:1,  avail:1, unit:'units' },
+    { id:'inv-4', icon:'ti-device-camera', name:'Photo Cameras',    dept:'equipment', total:4,  avail:3, unit:'units' },
+    { id:'inv-5', icon:'ti-bulb',          name:'Photo Lights',     dept:'equipment', total:6,  avail:4, unit:'sets'  },
+    { id:'inv-6', icon:'ti-bulb',          name:'Video Lights',     dept:'equipment', total:4,  avail:2, unit:'sets'  },
+    { id:'inv-7', icon:'ti-usb',           name:'Flash Disks 64GB', dept:'equipment', total:10, avail:7, unit:'units' },
+    { id:'inv-8', icon:'ti-book',          name:'Photobooks 8x12',  dept:'studio',    total:5,  avail:3, unit:'units' },
+    { id:'inv-9', icon:'ti-book',          name:'Photobooks 12x12', dept:'studio',    total:5,  avail:5, unit:'units' },
+    { id:'inv-10',icon:'ti-book',          name:'Signage Books',    dept:'studio',    total:3,  avail:2, unit:'units' },
+  ];
+})();
+
+// ── SETTINGS object — persisted to localStorage ─────────
+const SETTINGS_DEFAULTS = {
+  bizName: 'Mejason Media Production',
+  bizLocation: 'Joventure Hotel, 1st Floor, Kibos Rd, Kisumu',
+  bizPhone1: '+254 700 864849',
+  bizPhone2: '+254 768 375441',
+  bizPhone3: '+254 771 400 615',
+  mpesaPaybill: '522533',
+  mpesaAccount: '7616319',
+  mpesaTill: '9013189',
+  bankName: 'KCB Bank',
+  bankAccount: '1310465029',
+  bankHolder: 'Mejason Media Production',
+  bankBranch: 'Kisumu',
+  facebook: 'Mejason Media Production',
+  instagram: '@mejasonmedia',
+  email: 'mejasanw@gmail.com',
+  website: 'www.mejasonmedia.co.ke',
+};
+let SETTINGS = (() => {
+  try { return { ...SETTINGS_DEFAULTS, ...JSON.parse(localStorage.getItem('mmp_settings') || '{}') }; }
+  catch { return { ...SETTINGS_DEFAULTS }; }
+})();
 
 // State
 let cart = [], payMethod = 'cash', invoices = [], clients = [], payments = [];
 let activeDept = 'all', invFilter = 'all', invSearch = '', clientSearch = '';
-let activePeriod = 'month', mpesaPhone = '';
+let activePeriod = 'all', mpesaPhone = '';
+let periodFrom = '', periodTo = '';
 let svcSearch = '', svcDeptFilter = 'all';
 let analyticsChart = null;
 
@@ -1263,30 +1324,28 @@ function renderLockedPage(page) {
 }
 
 // ── PERIOD FILTER ────────────────────────────────────────
-function getDateRange(period) {
-  const n = new Date();
-  let start = new Date();
-  if (period === 'day')     { start = new Date(n.getFullYear(), n.getMonth(), n.getDate()); }
-  else if (period === 'week')    { start = new Date(n); start.setDate(n.getDate() - 7); }
-  else if (period === 'month')   { start = new Date(n.getFullYear(), n.getMonth(), 1); }
-  else if (period === 'quarter') { const q = Math.floor(n.getMonth() / 3); start = new Date(n.getFullYear(), q * 3, 1); }
-  else if (period === 'semi')    { start = new Date(n.getFullYear(), n.getMonth() < 6 ? 0 : 6, 1); }
-  else if (period === 'year')    { start = new Date(n.getFullYear(), 0, 1); }
-  else { return null; }
-  return { start, end: n };
+const INV_MONTHS = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+
+function parseInvDate(dateStr) {
+  try {
+    const parts = dateStr.split(' ');
+    return new Date(parseInt(parts[2]), INV_MONTHS[parts[1]], parseInt(parts[0]));
+  } catch { return null; }
 }
 
-function filterByPeriod(invList, period) {
-  const r = getDateRange(period);
-  if (!r) return invList;
-  const months = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
-  return invList.filter(inv => {
-    try {
-      const parts = inv.date.split(' ');
-      const d = new Date(parseInt(parts[2]), months[parts[1]], parseInt(parts[0]));
-      return d >= r.start && d <= r.end;
-    } catch { return true; }
-  });
+function filterByPeriod(invList) {
+  if (periodFrom || periodTo) {
+    const from = periodFrom ? new Date(periodFrom + 'T00:00:00') : null;
+    const to   = periodTo   ? new Date(periodTo   + 'T23:59:59') : null;
+    return invList.filter(inv => {
+      const d = parseInvDate(inv.date);
+      if (!d) return true;
+      if (from && d < from) return false;
+      if (to   && d > to)   return false;
+      return true;
+    });
+  }
+  return invList;
 }
 
 // ── DASHBOARD ────────────────────────────────────────────
@@ -1295,7 +1354,8 @@ function renderDashboard() {
   const unpaid  = invoices.filter(i => invStatus(i) === 'Unpaid').reduce((a, i) => a + invBalance(i), 0);
   const partial = invoices.filter(i => invStatus(i) === 'Partial').reduce((a, i) => a + invBalance(i), 0);
   const paid    = invoices.filter(i => invStatus(i) === 'Paid').reduce((a, i) => a + i.total, 0);
-  const todayInvs = filterByPeriod(invoices, 'day');
+  const todayStr = new Date().toLocaleDateString('en-KE', {day:'2-digit', month:'short', year:'numeric'});
+  const todayInvs = invoices.filter(i => i.date === todayStr);
   const todayRev  = todayInvs.reduce((a, i) => a + i.total, 0);
   const deptTotals = {};
   invoices.forEach(inv => inv.items.forEach(item => {
@@ -1403,7 +1463,10 @@ function renderPOS() {
           </div>
           <div class="cart-row-info">
             <div><label>Event Date</label><input type="date" id="cart-date" value="${now().toISOString().slice(0,10)}"/></div>
-            <div><label>Discount %</label><input type="number" id="disc-pct" placeholder="0" min="0" max="100" oninput="recalc()"/></div>
+            <div><label>Date of Birth</label><input type="date" id="cart-dob" placeholder="Client DOB"/></div>
+          </div>
+          <div>
+            <label>Discount %</label><input type="number" id="disc-pct" placeholder="0" min="0" max="100" oninput="recalc()"/>
           </div>
         </div>
         <div class="cart-items" id="cart-items"><div style="color:var(--muted);font-size:11px;text-align:center;padding:16px">Tap a service to add</div></div>
@@ -1572,18 +1635,31 @@ async function checkout() {
   const clientEmail  = document.getElementById('cart-cemail')?.value.trim();
   const clientWA     = document.getElementById('cart-cwhatsapp')?.value.trim();
   const eventDate    = document.getElementById('cart-date')?.value;
+  const clientDOB    = document.getElementById('cart-dob')?.value || null;
   const sendEmail    = document.getElementById('send-email')?.checked;
   const sendWhatsApp = document.getElementById('send-whatsapp')?.checked;
 
   if (!clientName) clientName = 'Walk-in #' + uid();
 
-  // Auto-create client from phone if new
-  if (clientPhone && !clientSel) {
+  // Auto-create or update client from POS fields
+  if (clientSel) {
+    // Selected existing client — update birthday if newly captured
+    if (clientDOB) {
+      const existing = clients.find(c => c.id === clientSel);
+      if (existing && !existing.birthday) {
+        existing.birthday = clientDOB;
+        await dbInsertClient(existing);
+      }
+    }
+  } else if (clientPhone) {
     const existing = clients.find(c => c.phone === clientPhone);
     if (!existing) {
-      const nc = { id: uid(), name: clientName, phone: clientPhone, email: clientEmail || '', event: '', notes: '', createdAt: dateStr() };
+      const nc = { id: uid(), name: clientName, phone: clientPhone, email: clientEmail || '', event: '', birthday: clientDOB, notes: '', createdAt: dateStr() };
       clients.push(nc);
       await dbInsertClient(nc);
+    } else if (clientDOB && !existing.birthday) {
+      existing.birthday = clientDOB;
+      await dbInsertClient(existing);
     }
   }
 
@@ -1720,17 +1796,17 @@ function buildInvoiceHTML(inv) {
   const pays = invPayments(inv.id);
   const totalPaid = pays.reduce((a, p) => a + p.amount, 0);
   const balance = inv.total - totalPaid;
+  const S = SETTINGS;
   return `<div class="invoice-container">
     <div class="invoice-header">
       <div class="invoice-company">
         <div class="invoice-logo">M</div>
         <div class="invoice-company-info">
-          <h2>Mejason Media Production</h2>
-          <p>Joventure Hotel, 1st Floor</p>
-          <p>Kibos Rd, Kisumu, Kenya</p>
-          <p>📞 0700864849 / 0768375441</p>
-          <p>📧 mejasanw@gmail.com</p>
-          <p>Tax ID: 0771400615</p>
+          <h2>${S.bizName}</h2>
+          <p>${S.bizLocation}</p>
+          <p>📞 ${S.bizPhone1}${S.bizPhone2 ? ' / ' + S.bizPhone2 : ''}</p>
+          <p>📧 ${S.email}</p>
+          ${S.website ? `<p>${S.website}</p>` : ''}
         </div>
       </div>
       <div class="invoice-meta">
@@ -1805,10 +1881,11 @@ function buildReceiptHTML(inv) {
   const pays = invPayments(inv.id);
   const totalPaid = pays.reduce((a, p) => a + p.amount, 0);
   const balance = inv.total - totalPaid;
+  const S = SETTINGS;
   return `<div class="receipt-container">
     <div class="receipt-header">
       <div class="receipt-logo">M</div>
-      <div class="receipt-company"><strong>MEJASON MEDIA</strong><br/>Kisumu, Kenya<br/>Tax: 0771400615</div>
+      <div class="receipt-company"><strong>${S.bizName.toUpperCase()}</strong><br/>${S.bizLocation}<br/>${S.bizPhone1}</div>
     </div>
     <div style="text-align:center;font-size:9px;margin-bottom:10px">
       Receipt #: ${inv.id}<br/>Date: ${inv.date} ${inv.time}
@@ -1939,16 +2016,16 @@ function updatePaymentDetails() {
   if (method === 'mpesa') {
     detailsBox.innerHTML = `<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px;font-size:11px;color:#166534">
       <strong>M-Pesa Payment Details:</strong><br/>
-      Paybill: <strong>522533</strong><br/>
-      Account: <strong>7616319</strong><br/>
+      Paybill: <strong>${SETTINGS.mpesaPaybill}</strong><br/>
+      Account: <strong>${SETTINGS.mpesaAccount}</strong><br/>
       <span style="color:var(--muted);font-size:10px">Customer enters amount on their phone and sends PIN.</span>
     </div>`;
   } else if (method === 'bank') {
     detailsBox.innerHTML = `<div style="background:#dbeafe;border:1px solid #bfdbfe;border-radius:8px;padding:10px;font-size:11px;color:#1e40af">
       <strong>Bank Transfer Details:</strong><br/>
-      Bank: <strong>KCB Bank</strong><br/>
-      Account Number: <strong>1310465029</strong><br/>
-      Account Name: <strong>Mejason Media Production</strong><br/>
+      Bank: <strong>${SETTINGS.bankName}</strong><br/>
+      Account Number: <strong>${SETTINGS.bankAccount}</strong><br/>
+      Account Name: <strong>${SETTINGS.bankHolder}</strong><br/>
       <span style="color:var(--muted);font-size:10px;margin-top:4px;display:block">Please get confirmation from customer and enter reference below.</span>
     </div>`;
   } else if (method === 'cash') {
@@ -2051,71 +2128,133 @@ function renderClients() {
   if (clientSearch) list = list.filter(c =>
     c.name.toLowerCase().includes(clientSearch.toLowerCase()) ||
     (c.phone && c.phone.includes(clientSearch)) ||
+    (c.email && c.email.toLowerCase().includes(clientSearch.toLowerCase())) ||
     (c.event && c.event.toLowerCase().includes(clientSearch.toLowerCase()))
   );
   document.getElementById('page-clients').innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px;flex-wrap:wrap">
-      <div class="search-bar" style="width:260px;margin:0"><i class="ti ti-search"></i><input placeholder="Search clients…" value="${clientSearch}" oninput="clientSearch=this.value;renderClients()"/></div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="search-bar" style="width:260px;margin:0"><i class="ti ti-search"></i><input placeholder="Search clients…" value="${clientSearch}" oninput="clientSearch=this.value;renderClients()"/></div>
+        <span style="font-size:11px;color:var(--muted)">${list.length} client${list.length !== 1 ? 's' : ''}</span>
+      </div>
       <button class="btn btn-red btn-sm" onclick="openModal('client-modal')"><i class="ti ti-plus"></i> Add Client</button>
     </div>
-    <div class="three-col">
+    <div class="card" style="padding:0;overflow:hidden">
       ${!list.length
-        ? '<div style="color:var(--muted);font-size:12px;grid-column:1/-1;text-align:center;padding:24px">No clients found</div>'
-        : list.map(c => {
-            const initials = c.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-            const cInvs = invoices.filter(i => i.clientPhone === c.phone || i.clientId === c.id);
-            const total = cInvs.reduce((a, i) => a + i.total, 0);
-            const balance = cInvs.reduce((a, i) => a + invBalance(i), 0);
-            return `<div class="card" style="cursor:pointer" onclick="">
-              <div style="width:36px;height:36px;border-radius:50%;background:var(--red);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:#fff;margin-bottom:8px">${initials}</div>
-              <div style="font-size:13px;font-weight:600">${c.name}</div>
-              <div style="font-size:11px;color:var(--muted)">${c.phone || '—'}</div>
-              <div style="font-size:11px;color:var(--muted);margin-bottom:8px">${c.event || '—'}</div>
-              <div style="display:flex;gap:10px;border-top:1px solid var(--border);padding-top:8px">
-                <div><div style="font-size:10px;color:var(--muted)">Billed</div><div style="font-size:12px;font-weight:600">${fmt(total)}</div></div>
-                <div><div style="font-size:10px;color:var(--muted)">Balance</div><div style="font-size:12px;font-weight:600;color:${balance > 0 ? '#dc2626' : 'var(--green)'}">${fmt(balance)}</div></div>
-                <div><div style="font-size:10px;color:var(--muted)">Invoices</div><div style="font-size:12px;font-weight:600">${cInvs.length}</div></div>
-              </div>
-            </div>`;
-          }).join('')}
+        ? '<div style="color:var(--muted);font-size:12px;text-align:center;padding:32px">No clients found</div>'
+        : `<table class="table" style="width:100%">
+            <thead>
+              <tr>
+                <th style="width:36px"></th>
+                <th>Name</th>
+                <th>Phone</th>
+                <th>Email</th>
+                <th>Birthday</th>
+                <th>Event</th>
+                <th>Billed</th>
+                <th>Balance</th>
+                <th>Inv.</th>
+                <th style="width:70px"></th>
+              </tr>
+            </thead>
+            <tbody>
+              ${list.map(c => {
+                const initials = c.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+                const cInvs = invoices.filter(i => i.clientPhone === c.phone || i.clientId === c.id);
+                const total = cInvs.reduce((a, i) => a + i.total, 0);
+                const balance = cInvs.reduce((a, i) => a + invBalance(i), 0);
+                const bdStr = c.birthday ? new Date(c.birthday + 'T00:00:00').toLocaleDateString('en-KE', {day:'2-digit',month:'short'}) : '—';
+                return `<tr>
+                  <td>
+                    <div style="width:30px;height:30px;border-radius:50%;background:var(--red);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;color:#fff">${initials}</div>
+                  </td>
+                  <td style="font-weight:600">${c.name}</td>
+                  <td>${c.phone ? `<a href="tel:${c.phone}" style="color:var(--blue);text-decoration:none">${c.phone}</a>` : '—'}</td>
+                  <td style="color:var(--muted)">${c.email || '—'}</td>
+                  <td>${bdStr}</td>
+                  <td style="color:var(--muted)">${c.event || '—'}</td>
+                  <td style="font-weight:600">${fmt(total)}</td>
+                  <td style="font-weight:600;color:${balance > 0 ? '#dc2626' : 'var(--green)'}">${fmt(balance)}</td>
+                  <td style="text-align:center">${cInvs.length}</td>
+                  <td>
+                    <div style="display:flex;gap:4px">
+                      <button class="btn btn-sm btn-outline" style="padding:3px 7px" onclick="openEditClient('${c.id}')" title="Edit"><i class="ti ti-pencil" style="font-size:11px"></i></button>
+                    </div>
+                  </td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>`}
     </div>`;
+}
+
+function openEditClient(id) {
+  const c = clients.find(x => x.id === id); if (!c) return;
+  document.getElementById('cl-name').value = c.name || '';
+  document.getElementById('cl-phone').value = c.phone || '';
+  document.getElementById('cl-email').value = c.email || '';
+  document.getElementById('cl-event').value = c.event || '';
+  document.getElementById('cl-birthday').value = c.birthday || '';
+  document.getElementById('cl-notes').value = c.notes || '';
+  // Store editing id on the modal
+  document.getElementById('client-modal').dataset.editId = id;
+  openModal('client-modal');
 }
 
 async function saveClient() {
   const name = document.getElementById('cl-name').value.trim();
   const phone = document.getElementById('cl-phone').value.trim();
   if (!name) { alert('Name is required.'); return; }
-  const c = {
-    id: uid(), name, phone,
-    email: document.getElementById('cl-email').value.trim(),
-    event: document.getElementById('cl-event').value.trim(),
-    notes: document.getElementById('cl-notes').value.trim(),
-    createdAt: dateStr()
-  };
-  clients.push(c);
-  await dbInsertClient(c);
+  const modal = document.getElementById('client-modal');
+  const editId = modal.dataset.editId || '';
+  const birthday = document.getElementById('cl-birthday').value || null;
+  const email = document.getElementById('cl-email').value.trim();
+  const event = document.getElementById('cl-event').value.trim();
+  const notes = document.getElementById('cl-notes').value.trim();
+
+  if (editId) {
+    const existing = clients.find(c => c.id === editId);
+    if (existing) {
+      existing.name = name; existing.phone = phone; existing.email = email;
+      existing.event = event; existing.birthday = birthday; existing.notes = notes;
+      await dbInsertClient(existing);
+    }
+  } else {
+    const c = { id: uid(), name, phone, email, event, birthday, notes, createdAt: dateStr() };
+    clients.push(c);
+    await dbInsertClient(c);
+  }
+  modal.dataset.editId = '';
   closeModal('client-modal');
-  // Clear fields
-  ['cl-name','cl-phone','cl-email','cl-event','cl-notes'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  ['cl-name','cl-phone','cl-email','cl-event','cl-birthday','cl-notes'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   renderClients();
 }
 
 // ── INVENTORY ────────────────────────────────────────────
+function saveInventoryToLocal() {
+  localStorage.setItem('mmp_inventory', JSON.stringify(INVENTORY));
+}
+
 function renderInventory() {
   document.getElementById('page-inventory').innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-      <span style="color:var(--muted);font-size:12px">Equipment & resource tracking</span>
-      <button class="btn btn-outline btn-sm"><i class="ti ti-plus"></i> Add Item</button>
+      <span style="color:var(--muted);font-size:12px">Equipment &amp; resource tracking — ${INVENTORY.length} items</span>
+      <button class="btn btn-red btn-sm" onclick="openAddInventoryItem()"><i class="ti ti-plus"></i> Add Item</button>
     </div>
     <div class="three-col">
       ${INVENTORY.map(i => {
-        const pct = Math.round(i.avail / i.total * 100);
+        const pct = i.total > 0 ? Math.round(i.avail / i.total * 100) : 0;
         const color = pct > 60 ? 'var(--green)' : pct > 30 ? 'var(--amber)' : '#dc2626';
-        const dept = DEPTS.find(d => d.id === i.dept) || { color: '#888' };
-        return `<div class="card">
-          <div style="width:34px;height:34px;border-radius:8px;background:${dept.color}18;display:flex;align-items:center;justify-content:center;color:${dept.color};margin-bottom:8px;font-size:17px"><i class="ti ${i.icon}"></i></div>
-          <div style="font-size:13px;font-weight:600">${i.name}</div>
-          <div style="font-size:20px;font-weight:700;margin:3px 0">${i.avail}<span style="font-size:12px;color:var(--muted);font-weight:400"> / ${i.total} ${i.unit}</span></div>
+        const dept = DEPTS.find(d => d.id === i.dept) || { color: '#888', icon: 'ti-box' };
+        return `<div class="card" style="position:relative">
+          <div style="position:absolute;top:10px;right:10px;display:flex;gap:4px">
+            <button class="btn btn-sm btn-outline" style="padding:3px 7px" onclick="openEditInventoryItem('${i.id}')" title="Edit"><i class="ti ti-pencil" style="font-size:11px"></i></button>
+            <button class="btn btn-sm" style="padding:3px 7px;background:#fee2e2;color:#991b1b;border:1px solid #fecaca" onclick="deleteInventoryItem('${i.id}')" title="Delete"><i class="ti ti-trash" style="font-size:11px"></i></button>
+          </div>
+          <div style="width:34px;height:34px;border-radius:8px;background:${dept.color}18;display:flex;align-items:center;justify-content:center;color:${dept.color};margin-bottom:8px;font-size:17px"><i class="ti ${i.icon||'ti-box'}"></i></div>
+          <div style="font-size:13px;font-weight:600;padding-right:60px">${i.name}</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px">${dept.name||i.dept}</div>
+          <div style="font-size:20px;font-weight:700;margin:3px 0">${i.avail}<span style="font-size:12px;color:var(--muted);font-weight:400"> / ${i.total} ${i.unit||'units'}</span></div>
           <div class="prog-wrap" style="margin-top:8px"><div class="prog-bar" style="width:${pct}%;background:${color}"></div></div>
           <div style="font-size:10px;color:${color};margin-top:4px">${i.avail > 0 ? i.avail + ' available' : 'All out'}</div>
         </div>`;
@@ -2123,35 +2262,106 @@ function renderInventory() {
     </div>`;
 }
 
+function openAddInventoryItem() {
+  document.getElementById('inv-item-modal-title').textContent = 'Add Inventory Item';
+  document.getElementById('inv-edit-id').value = '';
+  document.getElementById('inv-name-in').value = '';
+  document.getElementById('inv-total-in').value = '';
+  document.getElementById('inv-avail-in').value = '';
+  document.getElementById('inv-unit-in').value = 'units';
+  const sel = document.getElementById('inv-dept-in');
+  sel.innerHTML = '<option value="">— Select —</option>' + DEPTS.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+  sel.value = '';
+  openModal('inv-item-modal');
+}
+
+function openEditInventoryItem(id) {
+  const item = INVENTORY.find(i => i.id === id); if (!item) return;
+  document.getElementById('inv-item-modal-title').textContent = 'Edit Inventory Item';
+  document.getElementById('inv-edit-id').value = item.id;
+  document.getElementById('inv-name-in').value = item.name;
+  document.getElementById('inv-total-in').value = item.total;
+  document.getElementById('inv-avail-in').value = item.avail;
+  document.getElementById('inv-unit-in').value = item.unit || 'units';
+  const sel = document.getElementById('inv-dept-in');
+  sel.innerHTML = '<option value="">— Select —</option>' + DEPTS.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+  sel.value = item.dept || '';
+  openModal('inv-item-modal');
+}
+
+function saveInventoryItem() {
+  const id    = document.getElementById('inv-edit-id').value;
+  const name  = document.getElementById('inv-name-in').value.trim();
+  const total = parseInt(document.getElementById('inv-total-in').value) || 0;
+  const avail = parseInt(document.getElementById('inv-avail-in').value) || 0;
+  const unit  = document.getElementById('inv-unit-in').value.trim() || 'units';
+  const dept  = document.getElementById('inv-dept-in').value;
+  if (!name) { alert('Item name is required.'); return; }
+  if (id) {
+    const item = INVENTORY.find(i => i.id === id);
+    if (item) { item.name = name; item.total = total; item.avail = avail; item.unit = unit; item.dept = dept; }
+  } else {
+    INVENTORY.push({ id: 'inv-' + uid(), icon: 'ti-box', name, dept, total, avail, unit });
+  }
+  saveInventoryToLocal();
+  closeModal('inv-item-modal');
+  renderInventory();
+}
+
+function deleteInventoryItem(id) {
+  if (!confirm('Delete this item?')) return;
+  const idx = INVENTORY.findIndex(i => i.id === id);
+  if (idx !== -1) INVENTORY.splice(idx, 1);
+  saveInventoryToLocal();
+  renderInventory();
+}
+
 // ── ANALYTICS ────────────────────────────────────────────
+let activeTopClientDept = 'all';
+let bdayWindowDays = 3;
+
 function renderAnalytics() {
-  const periods = [
-    { k:'day', l:'Today' }, { k:'week', l:'7 Days' }, { k:'month', l:'This Month' },
-    { k:'quarter', l:'Quarter' }, { k:'semi', l:'6 Months' }, { k:'year', l:'This Year' }, { k:'all', l:'All Time' }
-  ];
-  const filtered = filterByPeriod(invoices, activePeriod);
-  const total = filtered.reduce((a, i) => a + i.total, 0);
-  const unpaid = filtered.filter(i => invStatus(i) === 'Unpaid').reduce((a, i) => a + invBalance(i), 0);
-  const partial = filtered.filter(i => invStatus(i) === 'Partial').reduce((a, i) => a + invBalance(i), 0);
+  const filtered = filterByPeriod(invoices);
+  const total    = filtered.reduce((a, i) => a + i.total, 0);
+  const unpaid   = filtered.filter(i => invStatus(i) === 'Unpaid').reduce((a, i) => a + invBalance(i), 0);
+  const partial  = filtered.filter(i => invStatus(i) === 'Partial').reduce((a, i) => a + invBalance(i), 0);
   const collected = total - unpaid - partial;
-  const deptTotals = {}, deptCounts = {};
+  const avgInv    = filtered.length ? total / filtered.length : 0;
+
+  // Dept totals
+  const deptTotals = {}, deptCounts = {}, deptClientRev = {};
   filtered.forEach(inv => inv.items.forEach(item => {
-    deptTotals[item.dept] = (deptTotals[item.dept] || 0) + item.price * item.qty;
-    deptCounts[item.dept] = (deptCounts[item.dept] || 0) + item.qty;
+    deptTotals[item.dept]  = (deptTotals[item.dept]  || 0) + item.price * item.qty;
+    deptCounts[item.dept]  = (deptCounts[item.dept]  || 0) + item.qty;
+    if (!deptClientRev[item.dept]) deptClientRev[item.dept] = {};
+    deptClientRev[item.dept][inv.clientName] = (deptClientRev[item.dept][inv.clientName] || 0) + item.price * item.qty;
   }));
+
+  // Payment methods
   const pmTotals = {};
   filtered.forEach(i => { pmTotals[i.payMethod] = (pmTotals[i.payMethod] || 0) + i.total; });
-  const clientRev = {};
-  filtered.forEach(inv => { clientRev[inv.clientName] = (clientRev[inv.clientName] || 0) + inv.total; });
-  const topClients = Object.entries(clientRev).sort((a, b) => b[1] - a[1]).slice(0, 6);
-  const months = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+
+  // Top clients — overall & per dept
+  const clientRevAll = {};
+  filtered.forEach(inv => { clientRevAll[inv.clientName] = (clientRevAll[inv.clientName] || 0) + inv.total; });
+  function topN(revObj, n = 8) { return Object.entries(revObj).sort((a, b) => b[1] - a[1]).slice(0, n); }
+  const rankColors = ['#f59e0b','#9ca3af','#92400e','#3b82f6','#8b5cf6','#ec4899','#10b981','#ef4444'];
+
+  const topForActiveDept = activeTopClientDept === 'all'
+    ? topN(clientRevAll)
+    : topN(deptClientRev[activeTopClientDept] || {});
+
+  // Timeline — group by month (or by day if range is ≤ 14 days)
   const timelineLabels = [], timelineData = [];
-  if (activePeriod === 'day' || activePeriod === 'week') {
-    const days = activePeriod === 'day' ? 1 : 7;
-    for (let i = days - 1; i >= 0; i--) {
-      const d = new Date(); d.setDate(d.getDate() - i);
+  const rangeDays = (periodFrom && periodTo)
+    ? Math.round((new Date(periodTo) - new Date(periodFrom)) / 86400000)
+    : null;
+  if (rangeDays !== null && rangeDays <= 14) {
+    const from = new Date(periodFrom + 'T00:00:00');
+    for (let i = 0; i <= rangeDays; i++) {
+      const d = new Date(from); d.setDate(from.getDate() + i);
       const label = d.toLocaleDateString('en-KE', { weekday:'short', day:'2-digit', month:'short' });
-      const ds = d.toLocaleDateString('en-KE', { day:'2-digit', month:'short', year:'numeric' });
+      const ds    = d.toLocaleDateString('en-KE', { day:'2-digit', month:'short', year:'numeric' });
       timelineLabels.push(label);
       timelineData.push(filtered.filter(inv => inv.date === ds).reduce((a, inv) => a + inv.total, 0));
     }
@@ -2161,50 +2371,170 @@ function renderAnalytics() {
     Object.entries(monthMap).sort((a, b) => a[0].localeCompare(b[0])).forEach(([k, v]) => { timelineLabels.push(k); timelineData.push(v); });
   }
 
+  // Upcoming birthdays
+  const bdays = getUpcomingBirthdays(bdayWindowDays);
+
+  // Period label for export filename
+  const pRangeLabel = periodFrom || periodTo
+    ? `${periodFrom || 'start'} to ${periodTo || 'now'}`
+    : 'All Time';
+
   document.getElementById('page-analytics').innerHTML = `
-    <div class="period-tabs">${periods.map(p => `<button class="period-tab ${activePeriod === p.k ? 'active' : ''}" onclick="setPeriod('${p.k}')">${p.l}</button>`).join('')}</div>
-    <div class="stats-grid" style="grid-template-columns:repeat(4,1fr)">
-      <div class="stat-card" style="border-top-color:var(--red)"><div class="stat-label">Total Billed</div><div class="stat-value">${fmt(total)}</div><div class="stat-sub">${filtered.length} invoices</div></div>
-      <div class="stat-card" style="border-top-color:var(--green)"><div class="stat-label">Collected</div><div class="stat-value">${fmt(collected)}</div></div>
-      <div class="stat-card" style="border-top-color:var(--amber)"><div class="stat-label">Partial</div><div class="stat-value">${fmt(partial)}</div></div>
-      <div class="stat-card" style="border-top-color:#dc2626"><div class="stat-label">Unpaid</div><div class="stat-value">${fmt(unpaid)}</div></div>
+    <!-- Custom period filter + export buttons -->
+    <div class="card" style="margin-bottom:14px;padding:12px 16px">
+      <div style="display:flex;align-items:flex-end;flex-wrap:wrap;gap:10px">
+        <div>
+          <label style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px">From</label>
+          <input type="date" id="rpt-from" value="${periodFrom}" style="width:155px;padding:7px 9px;border-radius:7px;border:1px solid var(--border);font-size:12px" onchange="periodFrom=this.value;renderAnalytics()"/>
+        </div>
+        <div>
+          <label style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px">To</label>
+          <input type="date" id="rpt-to" value="${periodTo}" style="width:155px;padding:7px 9px;border-radius:7px;border:1px solid var(--border);font-size:12px" onchange="periodTo=this.value;renderAnalytics()"/>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="periodFrom='';periodTo='';renderAnalytics()" title="Clear filter"><i class="ti ti-x"></i> Clear</button>
+        <div style="flex:1"></div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-sm btn-outline" onclick="exportReportCSV()" title="Export CSV"><i class="ti ti-table-export"></i> CSV</button>
+          <button class="btn btn-sm btn-outline" onclick="exportReportXLSX()" title="Export Excel"><i class="ti ti-file-spreadsheet"></i> Excel</button>
+          <button class="btn btn-sm" style="background:#C8252A;color:#fff" onclick="exportReportPDF()" title="Export PDF"><i class="ti ti-file-type-pdf"></i> PDF</button>
+        </div>
+      </div>
+      <div style="font-size:10px;color:var(--muted);margin-top:6px"><i class="ti ti-calendar" style="font-size:11px"></i> Showing: <strong>${pRangeLabel}</strong> · ${filtered.length} invoices</div>
     </div>
-    <div class="card" style="margin-bottom:14px">
+
+    <!-- KPI cards -->
+    <div id="rpt-kpi-strip" class="stats-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:14px">
+      <div class="stat-card" style="border-top-color:var(--red)"><div class="stat-label">Total Billed</div><div class="stat-value">${fmt(total)}</div><div class="stat-sub">${filtered.length} invoices</div></div>
+      <div class="stat-card" style="border-top-color:var(--green)"><div class="stat-label">Collected</div><div class="stat-value">${fmt(collected)}</div><div class="stat-sub">${total ? Math.round(collected/total*100) : 0}% of billed</div></div>
+      <div class="stat-card" style="border-top-color:var(--amber)"><div class="stat-label">Partial Balance</div><div class="stat-value">${fmt(partial)}</div></div>
+      <div class="stat-card" style="border-top-color:#dc2626"><div class="stat-label">Unpaid</div><div class="stat-value">${fmt(unpaid)}</div></div>
+      <div class="stat-card" style="border-top-color:var(--blue)"><div class="stat-label">Avg Invoice</div><div class="stat-value">${fmt(avgInv)}</div></div>
+    </div>
+
+    <!-- Revenue chart -->
+    <div id="rpt-timeline" class="card" style="margin-bottom:14px">
       <div class="card-title"><i class="ti ti-chart-line" style="color:var(--red)"></i> Revenue Timeline</div>
       <div style="position:relative;width:100%;height:200px"><canvas id="timeline-chart"></canvas></div>
     </div>
+
+    <!-- Dept breakdown + Payment methods -->
     <div class="two-col" style="margin-bottom:14px">
-      <div class="card">
+      <div id="rpt-depts" class="card">
         <div class="card-title"><i class="ti ti-building" style="color:var(--red)"></i> Department Breakdown</div>
-        ${DEPTS.map(d => {
-          const val = deptTotals[d.id] || 0; const cnt = deptCounts[d.id] || 0;
-          return `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #f5f5f3;font-size:12px">
-            <span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:${d.color};display:inline-block"></span>${d.name}</span>
-            <span><span style="color:var(--muted);font-size:10px;margin-right:8px">${cnt} items</span><strong>${fmt(val)}</strong></span>
-          </div>`;
-        }).join('')}
+        ${(() => {
+          const maxVal = Math.max(...DEPTS.map(d => deptTotals[d.id] || 0), 1);
+          return DEPTS.map(d => {
+            const val = deptTotals[d.id] || 0; const cnt = deptCounts[d.id] || 0;
+            const pct = Math.round(val / maxVal * 100);
+            return `<div style="padding:6px 0;border-bottom:1px solid #f5f5f3">
+              <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
+                <span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:${d.color};display:inline-block"></span>${d.name}</span>
+                <span><span style="color:var(--muted);font-size:10px;margin-right:8px">${cnt} items</span><strong>${fmt(val)}</strong></span>
+              </div>
+              <div style="height:4px;background:#f0f0ee;border-radius:2px"><div style="height:4px;width:${pct}%;background:${d.color};border-radius:2px;transition:width .4s"></div></div>
+            </div>`;
+          }).join('');
+        })()}
       </div>
-      <div>
-        <div class="card" style="margin-bottom:14px">
-          <div class="card-title"><i class="ti ti-trophy" style="color:var(--amber)"></i> Top Clients</div>
-          ${!topClients.length
-            ? '<div style="color:var(--muted);font-size:12px;text-align:center;padding:12px">No data</div>'
-            : topClients.map(([name, val], i) => `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f5f5f3;font-size:12px">
-                <div style="width:20px;height:20px;border-radius:50%;background:${['#d97706','#6b7280','#92400e'][i]||'#d1d5db'};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;flex-shrink:0">${i + 1}</div>
-                <span style="flex:1">${name}</span><span style="font-weight:600">${fmt(val)}</span>
-              </div>`).join('')}
-        </div>
-        <div class="card">
-          <div class="card-title"><i class="ti ti-credit-card" style="color:var(--blue)"></i> Payment Methods</div>
-          ${!Object.keys(pmTotals).length
-            ? '<div style="color:var(--muted);font-size:12px;text-align:center;padding:12px">No data</div>'
-            : Object.entries(pmTotals).map(([pm, val]) =>
-                `<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f5f5f3;font-size:12px"><span style="text-transform:capitalize">${pm}</span><span style="font-weight:600">${fmt(val)}</span></div>`
-              ).join('')}
+      <div id="rpt-payments" class="card">
+        <div class="card-title"><i class="ti ti-credit-card" style="color:var(--blue)"></i> Payment Methods</div>
+        ${!Object.keys(pmTotals).length
+          ? '<div style="color:var(--muted);font-size:12px;text-align:center;padding:12px">No data</div>'
+          : Object.entries(pmTotals).sort((a,b)=>b[1]-a[1]).map(([pm, val]) => {
+              const pct = Math.round(val / total * 100);
+              return `<div style="padding:6px 0;border-bottom:1px solid #f5f5f3">
+                <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
+                  <span style="text-transform:capitalize">${pm}</span>
+                  <span><span style="color:var(--muted);font-size:10px;margin-right:6px">${pct}%</span><strong>${fmt(val)}</strong></span>
+                </div>
+                <div style="height:4px;background:#f0f0ee;border-radius:2px"><div style="height:4px;width:${pct}%;background:var(--blue);border-radius:2px"></div></div>
+              </div>`;
+            }).join('')}
+      </div>
+    </div>
+
+    <!-- Top Clients per Department -->
+    <div id="rpt-top-clients" class="card" style="margin-bottom:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:6px">
+        <div class="card-title" style="margin:0"><i class="ti ti-trophy" style="color:var(--amber)"></i> Top Clients</div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px">
+          <button onclick="setTopClientDept('all')" class="btn btn-sm ${activeTopClientDept==='all'?'btn-red':'btn-outline'}" style="font-size:10px;padding:3px 9px">All</button>
+          ${DEPTS.map(d => `<button onclick="setTopClientDept('${d.id}')" class="btn btn-sm ${activeTopClientDept===d.id?'btn-red':'btn-outline'}" style="font-size:10px;padding:3px 9px;border-color:${d.color}33;color:${activeTopClientDept===d.id?'#fff':d.color}">${d.name}</button>`).join('')}
         </div>
       </div>
+      ${!topForActiveDept.length
+        ? '<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px">No invoices in this period</div>'
+        : `<table class="table" style="width:100%">
+            <thead>
+              <tr>
+                <th style="width:36px">#</th>
+                <th>Client</th>
+                <th>Phone</th>
+                <th>Email</th>
+                <th>Birthday</th>
+                <th>Event</th>
+                <th style="text-align:right">Invoices</th>
+                <th style="text-align:right">Total Billed</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${topForActiveDept.map(([name, val], idx) => {
+                const clientRec = clients.find(c => c.name === name);
+                const invCount  = filtered.filter(inv => inv.clientName === name).length;
+                const bdStr = clientRec?.birthday ? new Date(clientRec.birthday + 'T00:00:00').toLocaleDateString('en-KE', {day:'2-digit',month:'short'}) : '—';
+                const medalColors = ['#f59e0b','#9ca3af','#92400e'];
+                const rankColor = medalColors[idx] || '#d1d5db';
+                return `<tr>
+                  <td><div style="width:24px;height:24px;border-radius:50%;background:${rankColor};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#fff">${idx+1}</div></td>
+                  <td style="font-weight:600">${name}</td>
+                  <td>${clientRec?.phone ? `<a href="tel:${clientRec.phone}" style="color:var(--blue);text-decoration:none">${clientRec.phone}</a>` : '—'}</td>
+                  <td style="color:var(--muted)">${clientRec?.email || '—'}</td>
+                  <td>${bdStr}</td>
+                  <td style="color:var(--muted)">${clientRec?.event || '—'}</td>
+                  <td style="text-align:right">${invCount}</td>
+                  <td style="text-align:right;font-weight:700;color:var(--red)">${fmt(val)}</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>`}
+    </div>
+
+    <!-- Upcoming Birthdays -->
+    <div id="rpt-birthdays" class="card" style="margin-bottom:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:6px">
+        <div class="card-title" style="margin:0"><i class="ti ti-cake" style="color:#ec4899"></i> Upcoming Birthdays</div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:10px;color:var(--muted)">Next</span>
+          ${[3,7,14,30].map(d => `<button onclick="setBdayWindow(${d})" class="btn btn-sm ${bdayWindowDays===d?'btn-red':'btn-outline'}" style="font-size:10px;padding:3px 9px">${d}d</button>`).join('')}
+        </div>
+      </div>
+      ${!bdays.length
+        ? `<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px"><i class="ti ti-cake" style="font-size:24px;display:block;margin-bottom:6px;opacity:.3"></i>No birthdays in the next ${bdayWindowDays} days</div>`
+        : `<table class="table" style="width:100%">
+            <thead><tr><th>Client</th><th>Phone</th><th>Birthday</th><th>Age</th><th>In</th><th>Event</th><th style="text-align:right">Lifetime Spend</th></tr></thead>
+            <tbody>
+              ${bdays.map(c => {
+                const bdObj = new Date(c.birthday + 'T00:00:00');
+                const bdStr = bdObj.toLocaleDateString('en-KE', { day:'2-digit', month:'short', year:'numeric' });
+                const age   = new Date().getFullYear() - bdObj.getFullYear();
+                const cInvs = invoices.filter(i => i.clientPhone === c.phone || i.clientId === c.id);
+                const cTotal = cInvs.reduce((a,i) => a+i.total, 0);
+                const tagColor = c.daysUntil === 0 ? '#ec4899' : c.daysUntil <= 3 ? '#f59e0b' : 'var(--muted)';
+                return `<tr>
+                  <td style="font-weight:600">${c.name}</td>
+                  <td>${c.phone ? `<a href="tel:${c.phone}" style="color:var(--blue);text-decoration:none">${c.phone}</a>` : '—'}</td>
+                  <td>${bdStr}</td>
+                  <td>${age}</td>
+                  <td style="font-weight:700;color:${tagColor}">${c.daysUntil === 0 ? 'Today!' : c.daysUntil + 'd'}</td>
+                  <td style="color:var(--muted)">${c.event || '—'}</td>
+                  <td style="text-align:right;font-weight:600">${fmt(cTotal)}</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>`}
     </div>`;
 
+  // Draw chart
   setTimeout(() => {
     const ctx = document.getElementById('timeline-chart'); if (!ctx) return;
     if (analyticsChart) analyticsChart.destroy();
@@ -2219,7 +2549,135 @@ function renderAnalytics() {
   }, 50);
 }
 
-function setPeriod(p) { activePeriod = p; renderAnalytics(); }
+function setTopClientDept(d) { activeTopClientDept = d; renderAnalytics(); }
+function setBdayWindow(d) { bdayWindowDays = d; renderAnalytics(); }
+
+// Returns clients with birthdays within the next `days` days (including today)
+function getUpcomingBirthdays(days) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  return clients.filter(c => c.birthday).map(c => {
+    const bd = new Date(c.birthday + 'T00:00:00');
+    let next = new Date(today.getFullYear(), bd.getMonth(), bd.getDate());
+    if (next < today) next = new Date(today.getFullYear() + 1, bd.getMonth(), bd.getDate());
+    const diffDays = Math.round((next - today) / 86400000);
+    return { ...c, daysUntil: diffDays };
+  }).filter(c => c.daysUntil <= days).sort((a, b) => a.daysUntil - b.daysUntil);
+}
+
+function exportReportCSV() {
+  const filtered = filterByPeriod(invoices);
+  const rows = [['Invoice #','Date','Client','Phone','Departments','Items','Total (KSh)','Paid (KSh)','Balance (KSh)','Status','Payment Method']];
+  filtered.forEach(inv => {
+    const depts = [...new Set(inv.items.map(i => DEPTS.find(d=>d.id===i.dept)?.name||i.dept))].join('; ');
+    const items = inv.items.map(i => i.name).join('; ');
+    rows.push([inv.id, inv.date, inv.clientName||'', inv.clientPhone||'', depts, items, inv.total, invPaid(inv), invBalance(inv), invStatus(inv), inv.payMethod]);
+  });
+  const csv = rows.map(r => r.map(v => `"${String(v??'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob(['﻿'+csv], { type:'text/csv;charset=utf-8' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `edospoa-report-${periodFrom||'all'}.csv`; a.click();
+}
+
+function exportReportXLSX() {
+  if (typeof XLSX === 'undefined') { alert('Excel library not loaded. Please check your connection.'); return; }
+  const filtered = filterByPeriod(invoices);
+  const wb = XLSX.utils.book_new();
+
+  // Sheet 1 — Invoice list
+  const invData = filtered.map(inv => ({
+    'Invoice #': inv.id,
+    'Date': inv.date,
+    'Client': inv.clientName||'',
+    'Phone': inv.clientPhone||'',
+    'Departments': [...new Set(inv.items.map(i => DEPTS.find(d=>d.id===i.dept)?.name||i.dept))].join(', '),
+    'Items': inv.items.map(i => i.name).join(', '),
+    'Total (KSh)': inv.total,
+    'Paid (KSh)': invPaid(inv),
+    'Balance (KSh)': invBalance(inv),
+    'Status': invStatus(inv),
+    'Payment Method': inv.payMethod,
+  }));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(invData), 'Invoices');
+
+  // Sheet 2 — Dept breakdown
+  const deptTotals = {}, deptCounts = {};
+  filtered.forEach(inv => inv.items.forEach(item => {
+    deptTotals[item.dept] = (deptTotals[item.dept]||0) + item.price * item.qty;
+    deptCounts[item.dept] = (deptCounts[item.dept]||0) + item.qty;
+  }));
+  const deptData = DEPTS.map(d => ({ Department: d.name, 'Items Sold': deptCounts[d.id]||0, 'Revenue (KSh)': deptTotals[d.id]||0 }));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(deptData), 'By Department');
+
+  // Sheet 3 — Top clients
+  const clientRevObj = {};
+  filtered.forEach(inv => { clientRevObj[inv.clientName] = (clientRevObj[inv.clientName]||0) + inv.total; });
+  const topData = Object.entries(clientRevObj).sort((a,b)=>b[1]-a[1]).map(([name,val],i) => ({
+    'Rank': i+1, 'Client': name,
+    'Phone': clients.find(c=>c.name===name)?.phone||'',
+    'Total Billed (KSh)': val,
+    'Invoices': filtered.filter(inv=>inv.clientName===name).length,
+  }));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(topData), 'Top Clients');
+
+  XLSX.writeFile(wb, `edospoa-report-${periodFrom||'all'}.xlsx`);
+}
+
+function exportReportPDF() {
+  const pLabel = periodFrom || periodTo ? `${periodFrom||'start'} to ${periodTo||'now'}` : 'All Time';
+  const filtered = filterByPeriod(invoices);
+  const total    = filtered.reduce((a,i)=>a+i.total,0);
+  const collected= total - filtered.filter(i=>invStatus(i)==='Unpaid').reduce((a,i)=>a+invBalance(i),0)
+                         - filtered.filter(i=>invStatus(i)==='Partial').reduce((a,i)=>a+invBalance(i),0);
+
+  // Dept breakdown
+  const deptTotals={}, deptCounts={};
+  filtered.forEach(inv=>inv.items.forEach(item=>{
+    deptTotals[item.dept]=(deptTotals[item.dept]||0)+item.price*item.qty;
+    deptCounts[item.dept]=(deptCounts[item.dept]||0)+item.qty;
+  }));
+  const clientRevObj={};
+  filtered.forEach(inv=>{ clientRevObj[inv.clientName]=(clientRevObj[inv.clientName]||0)+inv.total; });
+  const top10 = Object.entries(clientRevObj).sort((a,b)=>b[1]-a[1]).slice(0,10);
+
+  const html = `
+    <div style="font-family:Arial,sans-serif;padding:24px;max-width:750px;margin:0 auto;font-size:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid #C8252A;padding-bottom:12px;margin-bottom:16px">
+        <div>
+          <div style="font-size:20px;font-weight:800;color:#C8252A">EdosPoa</div>
+          <div style="color:#666;font-size:11px">Analytics Report · ${pLabel}</div>
+        </div>
+        <div style="text-align:right;font-size:11px;color:#666">Generated: ${new Date().toLocaleDateString('en-KE',{day:'2-digit',month:'short',year:'numeric'})}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:18px">
+        ${[['Total Billed',fmt(total),'#C8252A'],['Collected',fmt(collected),'#16a34a'],['Invoices',filtered.length,'#2563eb'],['Avg Invoice',fmt(filtered.length?total/filtered.length:0),'#d97706']].map(([l,v,c])=>`
+          <div style="border:1px solid #eee;border-top:3px solid ${c};border-radius:6px;padding:10px">
+            <div style="font-size:9px;color:#888;text-transform:uppercase">${l}</div>
+            <div style="font-size:17px;font-weight:700;color:#111">${v}</div>
+          </div>`).join('')}
+      </div>
+      <div style="margin-bottom:18px">
+        <div style="font-weight:700;margin-bottom:8px;color:#C8252A">Department Breakdown</div>
+        <table style="width:100%;border-collapse:collapse;font-size:11px">
+          <tr style="background:#f9f9f9"><th style="padding:6px 8px;border:1px solid #eee;text-align:left">Department</th><th style="padding:6px 8px;border:1px solid #eee">Items</th><th style="padding:6px 8px;border:1px solid #eee">Revenue (KSh)</th></tr>
+          ${DEPTS.map(d=>`<tr><td style="padding:6px 8px;border:1px solid #eee">${d.name}</td><td style="padding:6px 8px;border:1px solid #eee;text-align:center">${deptCounts[d.id]||0}</td><td style="padding:6px 8px;border:1px solid #eee;text-align:right;font-weight:600">${fmt(deptTotals[d.id]||0)}</td></tr>`).join('')}
+        </table>
+      </div>
+      <div>
+        <div style="font-weight:700;margin-bottom:8px;color:#C8252A">Top 10 Clients</div>
+        <table style="width:100%;border-collapse:collapse;font-size:11px">
+          <tr style="background:#f9f9f9"><th style="padding:6px 8px;border:1px solid #eee">#</th><th style="padding:6px 8px;border:1px solid #eee;text-align:left">Client</th><th style="padding:6px 8px;border:1px solid #eee">Invoices</th><th style="padding:6px 8px;border:1px solid #eee">Total (KSh)</th></tr>
+          ${top10.map(([name,val],i)=>`<tr><td style="padding:6px 8px;border:1px solid #eee;text-align:center;font-weight:700">${i+1}</td><td style="padding:6px 8px;border:1px solid #eee">${name}</td><td style="padding:6px 8px;border:1px solid #eee;text-align:center">${filtered.filter(inv=>inv.clientName===name).length}</td><td style="padding:6px 8px;border:1px solid #eee;text-align:right;font-weight:600;color:#C8252A">${fmt(val)}</td></tr>`).join('')}
+        </table>
+      </div>
+    </div>`;
+  if (typeof html2pdf !== 'undefined') {
+    const el = document.createElement('div');
+    el.innerHTML = html; el.style.display = 'none'; document.body.appendChild(el);
+    html2pdf().set({ margin:8, filename:`edospoa-report-${periodFrom||'all'}.pdf`, image:{type:'jpeg',quality:.98}, html2canvas:{scale:2}, jsPDF:{orientation:'portrait',unit:'mm',format:'a4'} })
+      .from(el).save().then(()=>document.body.removeChild(el));
+  } else {
+    const w = window.open('','_blank'); w.document.write(html); w.document.close(); w.print();
+  }
+}
 
 // ── USERS — Role Matrix ────────────────────────────────────
 const ROLE_LIST = ['cashier','manager','admin','owner'];
@@ -2561,24 +3019,25 @@ async function deleteStaff(id, name) {
 
 // ── SETTINGS ─────────────────────────────────────────────
 function renderSettings() {
+  const s = SETTINGS;
   document.getElementById('page-settings').innerHTML = `
     <div class="two-col">
       <div class="card">
         <div class="card-title"><i class="ti ti-building" style="color:var(--red)"></i> Business Info</div>
         <div style="display:grid;gap:10px">
-          <div><label>Business Name</label><input value="Mejason Media Production"/></div>
-          <div><label>Location</label><input value="Joventure Hotel, 1st Floor, Kibos Rd, Kisumu"/></div>
-          <div><label>Phone 1</label><input value="+254 700 864849"/></div>
-          <div><label>Phone 2</label><input value="+254 768 375441"/></div>
-          <div><label>Phone 3</label><input value="+254 771 400 615"/></div>
+          <div><label>Business Name</label><input id="set-bizName" value="${s.bizName}"/></div>
+          <div><label>Location</label><input id="set-bizLocation" value="${s.bizLocation}"/></div>
+          <div><label>Phone 1</label><input id="set-bizPhone1" value="${s.bizPhone1}"/></div>
+          <div><label>Phone 2</label><input id="set-bizPhone2" value="${s.bizPhone2}"/></div>
+          <div><label>Phone 3</label><input id="set-bizPhone3" value="${s.bizPhone3}"/></div>
         </div>
       </div>
       <div class="card">
         <div class="card-title"><i class="ti ti-device-mobile" style="color:var(--green)"></i> M-Pesa Settings</div>
         <div style="display:grid;gap:10px">
-          <div><label>Paybill Number</label><input value="522533"/></div>
-          <div><label>Account Number</label><input value="7616319"/></div>
-          <div><label>Till Number</label><input value="9013189"/></div>
+          <div><label>Paybill Number</label><input id="set-mpesaPaybill" value="${s.mpesaPaybill}"/></div>
+          <div><label>Account Number</label><input id="set-mpesaAccount" value="${s.mpesaAccount}"/></div>
+          <div><label>Till Number</label><input id="set-mpesaTill" value="${s.mpesaTill}"/></div>
           <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px;font-size:11px;color:#166534">
             <i class="ti ti-info-circle"></i> STK Push is simulated in demo mode. Integrate Safaricom Daraja API for live payments.
           </div>
@@ -2587,12 +3046,12 @@ function renderSettings() {
       <div class="card">
         <div class="card-title"><i class="ti ti-building-bank" style="color:#2563eb"></i> Bank Settings</div>
         <div style="display:grid;gap:10px">
-          <div><label>Bank Name</label><input value="KCB Bank" placeholder="e.g. KCB Bank"/></div>
-          <div><label>Account Number</label><input value="1310465029" placeholder="e.g. 1310465029"/></div>
-          <div><label>Account Holder</label><input value="Mejason Media Production" placeholder="Account holder name"/></div>
-          <div><label>Branch</label><input value="Kisumu" placeholder="e.g. Kisumu"/></div>
+          <div><label>Bank Name</label><input id="set-bankName" value="${s.bankName}" placeholder="e.g. KCB Bank"/></div>
+          <div><label>Account Number</label><input id="set-bankAccount" value="${s.bankAccount}" placeholder="e.g. 1310465029"/></div>
+          <div><label>Account Holder</label><input id="set-bankHolder" value="${s.bankHolder}" placeholder="Account holder name"/></div>
+          <div><label>Branch</label><input id="set-bankBranch" value="${s.bankBranch}" placeholder="e.g. Kisumu"/></div>
           <div style="background:#dbeafe;border:1px solid #bfdbfe;border-radius:8px;padding:10px;font-size:11px;color:#1e40af">
-            <i class="ti ti-info-circle"></i> Bank details will appear on invoices and receipts. Customers can use these for bank transfers.
+            <i class="ti ti-info-circle"></i> Bank details will appear on invoices and receipts.
           </div>
         </div>
       </div>
@@ -2608,14 +3067,31 @@ function renderSettings() {
       <div class="card">
         <div class="card-title"><i class="ti ti-social" style="color:var(--blue)"></i> Social & Contact</div>
         <div style="display:grid;gap:10px">
-          <div><label>Facebook</label><input value="Mejason Media Production"/></div>
-          <div><label>Instagram</label><input value="@mejasonmedia"/></div>
-          <div><label>Email</label><input value="mejasanw@gmail.com"/></div>
-          <div><label>Website</label><input value="www.mejasonmedia.co.ke"/></div>
+          <div><label>Facebook</label><input id="set-facebook" value="${s.facebook}"/></div>
+          <div><label>Instagram</label><input id="set-instagram" value="${s.instagram}"/></div>
+          <div><label>Email</label><input id="set-email" value="${s.email}"/></div>
+          <div><label>Website</label><input id="set-website" value="${s.website}"/></div>
         </div>
       </div>
     </div>
-    <div style="margin-top:12px"><button class="btn btn-red"><i class="ti ti-check"></i> Save Settings</button></div>`;
+    <div style="margin-top:12px;display:flex;align-items:center;gap:10px">
+      <button class="btn btn-red" onclick="saveSettings()"><i class="ti ti-check"></i> Save Settings</button>
+      <span id="settings-saved-msg" style="font-size:11px;color:var(--green);display:none"><i class="ti ti-circle-check"></i> Saved successfully</span>
+    </div>`;
+}
+
+function saveSettings() {
+  const fields = ['bizName','bizLocation','bizPhone1','bizPhone2','bizPhone3',
+    'mpesaPaybill','mpesaAccount','mpesaTill',
+    'bankName','bankAccount','bankHolder','bankBranch',
+    'facebook','instagram','email','website'];
+  fields.forEach(k => {
+    const el = document.getElementById('set-' + k);
+    if (el) SETTINGS[k] = el.value.trim();
+  });
+  localStorage.setItem('mmp_settings', JSON.stringify(SETTINGS));
+  const msg = document.getElementById('settings-saved-msg');
+  if (msg) { msg.style.display = 'inline-flex'; setTimeout(() => msg.style.display = 'none', 2500); }
 }
 
 // ── SERVICES MANAGEMENT ──────────────────────────────────
