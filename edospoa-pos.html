@@ -379,6 +379,17 @@ create policy "allow all" on payments for all using (true) with check (true);</p
     </div>
   </div>
 
+  <!-- Service Picker Modal -->
+  <div class="modal-bg" id="svc-picker-modal">
+    <div class="modal" style="width:420px;max-width:95vw">
+      <div class="modal-hdr">
+        <span><i class="ti ti-list-check" style="color:var(--red)"></i> Select Items</span>
+        <button class="btn btn-outline btn-sm" onclick="closeModal('svc-picker-modal')"><i class="ti ti-x"></i></button>
+      </div>
+      <div style="padding:16px" id="svc-picker-body"></div>
+    </div>
+  </div>
+
   <!-- M-Pesa Modal -->
   <div class="modal-bg" id="mpesa-modal">
     <div class="modal" style="width:380px">
@@ -1540,7 +1551,7 @@ function buildSvcGrid(dept, q) {
   if (!list.length) return '<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px;grid-column:1/-1">No services found</div>';
   return list.map(s => {
     const d = DEPTS.find(x => x.id === s.dept) || { color: '#888', name: s.dept };
-    return `<div class="svc-card" onclick="addToCart('${s.id}')">
+    return `<div class="svc-card" onclick="openServicePicker('${s.id}')">
       <div class="svc-dept" style="color:${d.color}">${d.name}</div>
       <div class="svc-name">${s.name}</div>
       <div class="svc-desc">${s.desc}</div>
@@ -1584,14 +1595,22 @@ function updateCartUI() {
     recalc(); return;
   }
   el.innerHTML = cart.map(c => `<div class="c-item">
-    <div style="flex:1">
-      <div class="c-item-name">${c.name}</div>
+    <div style="flex:1;min-width:0">
+      <div class="c-item-name" style="white-space:normal;line-height:1.3">${c.name}</div>
       <div class="c-item-sub">${DEPTS.find(d => d.id === c.dept)?.name || c.dept} · qty
         <input type="number" value="${c.qty}" min="1" style="width:40px;padding:2px 4px;font-size:10px;display:inline-block" onchange="setQty('${c.id}',this.value)"/>
       </div>
     </div>
-    <div class="c-item-price">${fmt(c.price * c.qty)}</div>
-    <span class="c-remove" onclick="removeCart('${c.id}')">×</span>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0;margin-left:6px">
+      <div style="display:flex;align-items:center;gap:2px">
+        <span style="font-size:9px;color:var(--muted)">KSh</span>
+        <input type="number" value="${c.price}" min="0" step="1"
+          style="width:72px;padding:2px 4px;font-size:11px;font-weight:600;text-align:right;color:var(--red);border:1px solid var(--border);border-radius:4px;background:#fff8f8"
+          onchange="setPrice('${c.id}',this.value)" title="Edit unit price"/>
+      </div>
+      ${c.qty > 1 ? `<span style="font-size:9px;color:var(--muted)">= ${fmt(c.price * c.qty)}</span>` : ''}
+    </div>
+    <span class="c-remove" onclick="removeCart('${c.id}')" style="margin-left:4px">×</span>
   </div>`).join('');
   recalc();
 }
@@ -1600,6 +1619,46 @@ function setQty(id, v) {
   const c = cart.find(x => x.id === id);
   if (c) { c.qty = Math.max(1, parseInt(v) || 1); }
   updateCartUI();
+}
+
+function setPrice(id, v) {
+  const c = cart.find(x => x.id === id);
+  if (c) { c.price = Math.max(0, parseFloat(v) || 0); recalc(); }
+}
+
+function openServicePicker(id) {
+  const s = SERVICES.find(x => x.id === id); if (!s) return;
+  const items = s.desc.split(',').map(x => x.trim()).filter(Boolean);
+  if (items.length <= 1) { addToCart(id); return; }
+  const d = DEPTS.find(x => x.id === s.dept);
+  document.getElementById('svc-picker-body').innerHTML = `
+    <div style="background:#fff8f8;border:1px solid #fca5a5;border-radius:8px;padding:10px;margin-bottom:12px">
+      <div style="font-size:12px;font-weight:600;margin-bottom:1px">${s.name}</div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:8px">${d?.name || s.dept} · Full package — ${fmt(s.price)}</div>
+      <button class="btn btn-red" style="width:100%;justify-content:center;font-size:12px" onclick="addToCart('${id}');closeModal('svc-picker-modal')">
+        <i class="ti ti-package"></i> Add Full Package — ${fmt(s.price)}
+      </button>
+    </div>
+    <div style="font-size:10px;color:var(--muted);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.4px">Or add individual items (set price in cart)</div>
+    <div style="display:grid;gap:5px">
+      ${items.map((item, idx) => `
+        <div style="display:flex;align-items:center;justify-content:space-between;background:#fafaf8;border:1px solid var(--border);border-radius:7px;padding:7px 10px;gap:8px">
+          <span style="font-size:12px;flex:1">${item}</span>
+          <button class="btn btn-sm btn-outline" onclick="addSubItemToCart('${id}',${idx})">
+            <i class="ti ti-plus"></i> Add
+          </button>
+        </div>`).join('')}
+    </div>`;
+  openModal('svc-picker-modal');
+}
+
+function addSubItemToCart(parentId, itemIdx) {
+  const s = SERVICES.find(x => x.id === parentId); if (!s) return;
+  const items = s.desc.split(',').map(x => x.trim()).filter(Boolean);
+  const itemName = items[itemIdx]; if (!itemName) return;
+  cart.push({ id: parentId + '_' + itemIdx + '_' + Date.now(), name: s.name + ' · ' + itemName, qty: 1, price: 0, desc: 'Package item', dept: s.dept });
+  updateCartUI();
+  closeModal('svc-picker-modal');
 }
 
 function recalc() {
