@@ -860,7 +860,7 @@ async function loadFromSupabase() {
       sb.from('invoices').select('*').order('created_at', { ascending: false }),
       sb.from('payments').select('*'),
     ]);
-    if (cls) clients = cls.map(r => ({ id: r.id, name: r.name, phone: r.phone, email: r.email, event: r.event, birthday: r.birthday || null, notes: r.notes, createdAt: r.created_at }));
+    if (cls) clients = cls.map(r => ({ id: r.id, name: r.name, phone: r.phone, email: r.email, event: r.event, birthday: r.birthday || null, notes: r.notes, referral_code: r.referral_code || null, referred_by: r.referred_by || null, createdAt: r.created_at }));
     if (invs) invoices = invs.map(r => r.data);
     if (pays) payments = pays.map(r => ({ id: r.id, invoiceId: r.invoice_id, amount: parseFloat(r.amount), method: r.method, note: r.note, paidAt: r.paid_at }));
   } catch (e) { console.warn('Supabase load error', e); }
