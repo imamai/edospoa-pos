@@ -569,6 +569,25 @@ async function dbInsertPayment(p) {
   await sb.from('payments').upsert({ id: p.id, invoice_id: p.invoiceId, amount: p.amount, method: p.method, note: p.note, paid_at: p.paidAt });
 }
 
+async function deleteClient(id) {
+  if (!confirm('Delete this client? This cannot be undone.')) return;
+  clients = clients.filter(c => c.id !== id);
+  if (useSupabase) await sb.from('clients').delete().eq('id', id);
+  renderClients();
+}
+
+async function deleteInvoice(id) {
+  if (!confirm('Delete this invoice? All linked payments will also be removed. This cannot be undone.')) return;
+  invoices = invoices.filter(i => i.id !== id);
+  payments = payments.filter(p => p.invoiceId !== id);
+  if (useSupabase) {
+    await sb.from('payments').delete().eq('invoice_id', id);
+    await sb.from('invoices').delete().eq('id', id);
+  }
+  renderInvoices();
+  renderDashboard();
+}
+
 // ── AUTOMATED SENDING SERVICE ────────────────────────────
 // Initialize EmailJS for automatic email sending
 setTimeout(() => {
@@ -1484,21 +1503,15 @@ function renderPOS() {
           </div>
         </div>
         <div class="cart-items" id="cart-items"><div style="color:var(--muted);font-size:11px;text-align:center;padding:16px">Tap a service to add</div></div>
-        <div style="padding:10px 12px;border-top:1px solid var(--border);border-bottom:1px solid var(--border);background:#f5f5f3">
-          <div style="font-size:10px;color:var(--muted);margin-bottom:8px;font-weight:600">+ Add Custom Item</div>
-          <div style="display:grid;grid-template-columns:1fr 50px;gap:6px">
-            <input id="custom-item-name" placeholder="Item name" style="padding:6px 8px;border-radius:5px;font-size:11px"/>
-            <input id="custom-item-qty" type="number" value="1" min="1" placeholder="Qty" style="padding:6px 8px;border-radius:5px;font-size:11px"/>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px">
-            <input id="custom-item-price" type="number" placeholder="Price (KSh)" min="0" step="0.01" style="padding:6px 8px;border-radius:5px;font-size:11px"/>
-            <button class="btn btn-sm" style="background:var(--red);color:#fff;justify-content:center;border:none" onclick="addCustomItem()"><i class="ti ti-plus"></i> Add</button>
-          </div>
-        </div>
         <div class="cart-foot">
           <div class="cf-row"><span>Subtotal</span><span id="cf-sub">KSh 0</span></div>
           <div class="cf-row"><span>Discount</span><span id="cf-disc" style="color:var(--green)">- KSh 0</span></div>
           <div class="cf-total"><span>Total</span><span id="cf-total" style="color:var(--red)">KSh 0</span></div>
+          <div id="cf-balance-row" style="display:none;justify-content:space-between;font-size:11px;font-weight:600;color:#dc2626;padding:2px 0 6px"><span>Balance Due</span><span id="cf-balance">KSh 0</span></div>
+          <div style="margin-bottom:8px">
+            <label style="font-size:10px;color:var(--muted);margin-bottom:3px;display:block">Amount Paid (KSh) <span style="font-weight:400">(blank = full payment)</span></label>
+            <input type="number" id="cart-paid" placeholder="Leave blank for full payment" min="0" step="0.01" style="padding:6px 8px;border-radius:5px;font-size:12px;width:100%" oninput="updateCartPaidDisplay()"/>
+          </div>
           <div class="pay-grid">
             <button class="pay-btn active" id="pm-cash"   onclick="selPM('cash')">  <i class="ti ti-cash"></i> Cash</button>
             <button class="pay-btn"        id="pm-mpesa"  onclick="selPM('mpesa')"> <i class="ti ti-device-mobile"></i> M-Pesa</button>
@@ -1553,27 +1566,13 @@ function addToCart(id) {
 }
 function removeCart(id) { cart = cart.filter(c => c.id !== id); updateCartUI(); }
 
-function addCustomItem() {
-  const name = document.getElementById('custom-item-name')?.value.trim();
-  const qty = Math.max(1, parseInt(document.getElementById('custom-item-qty')?.value) || 1);
-  const price = Math.max(0, parseFloat(document.getElementById('custom-item-price')?.value) || 0);
-  
-  if (!name) { alert('Please enter an item name.'); return; }
-  if (price <= 0) { alert('Please enter a valid price.'); return; }
-  
-  // Generate unique ID for custom item
-  const customId = 'custom_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
-  const item = { id: customId, name, qty, price, desc: 'Custom item', dept: 'custom' };
-  
-  cart.push(item);
-  
-  // Clear inputs
-  document.getElementById('custom-item-name').value = '';
-  document.getElementById('custom-item-qty').value = '1';
-  document.getElementById('custom-item-price').value = '';
-  
-  updateCartUI();
-  document.getElementById('custom-item-name').focus();
+function updateCartPaidDisplay() {
+  const { total } = recalc();
+  const paid = parseFloat(document.getElementById('cart-paid')?.value) || 0;
+  const row = document.getElementById('cf-balance-row');
+  const span = document.getElementById('cf-balance');
+  if (row) row.style.display = (paid > 0 && paid < total) ? 'flex' : 'none';
+  if (span && paid > 0 && paid < total) span.textContent = fmt(total - paid);
 }
 
 function updateCartUI() {
@@ -1664,12 +1663,16 @@ async function checkout() {
     }
   }
 
+  const cartPaidAmt = parseFloat(document.getElementById('cart-paid')?.value) || 0;
+  const amountPaid = (cartPaidAmt > 0 && cartPaidAmt < total) ? cartPaidAmt : total;
+  const isPartial = amountPaid < total;
+
   const inv = {
     id: 'MMP-' + String(invoices.length + 301).padStart(3, '0'),
     clientName, clientPhone, clientEmail: clientEmail || '',
     clientWhatsApp: clientWA || '', clientId: clientSel || null,
     items: [...cart], subtotal: sub, discountPct: disc, discountAmt: da,
-    total, payMethod, status: payMethod === 'credit' ? 'Unpaid' : 'Paid',
+    total, payMethod, status: payMethod === 'credit' ? 'Unpaid' : (isPartial ? 'Partial' : 'Paid'),
     date: dateStr(), time: timeStr(), eventDate: eventDate || dateStr(),
     cashier: currentUser.name, dept: [...new Set(cart.map(c => c.dept))],
     sendEmail, sendWhatsApp,
@@ -1677,7 +1680,7 @@ async function checkout() {
 
   // Auto-record initial payment for non-credit sales
   if (payMethod !== 'credit') {
-    const p = { id: uid(), invoiceId: inv.id, amount: total, method: payMethod, note: 'Initial payment', paidAt: dateStr() + ' ' + timeStr() };
+    const p = { id: uid(), invoiceId: inv.id, amount: amountPaid, method: payMethod, note: isPartial ? 'Partial payment' : 'Initial payment', paidAt: dateStr() + ' ' + timeStr() };
     payments.push(p);
     await dbInsertPayment(p);
   }
@@ -2113,8 +2116,9 @@ function renderInvoices() {
               <td style="text-transform:uppercase;font-size:10px">${i.payMethod}</td>
               <td><span class="badge ${st==='Paid'?'badge-green':st==='Partial'?'badge-amber':'badge-red'}">${st}</span></td>
               <td style="color:var(--muted);font-size:10px">${i.date}</td>
-              <td onclick="event.stopPropagation()">
-                ${bal > 0 ? `<button class="btn btn-sm btn-green" onclick="openPaymentModal('${i.id}')"><i class="ti ti-plus"></i></button>` : ''}
+              <td onclick="event.stopPropagation()" style="white-space:nowrap">
+                ${bal > 0 ? `<button class="btn btn-sm btn-green" onclick="openPaymentModal('${i.id}')" style="margin-right:3px"><i class="ti ti-plus"></i></button>` : ''}
+                <button class="btn btn-sm btn-outline" style="padding:3px 7px;color:#dc2626;border-color:#fca5a5" onclick="deleteInvoice('${i.id}')" title="Delete"><i class="ti ti-trash" style="font-size:11px"></i></button>
               </td>
             </tr>`;
           }).join('')}
@@ -2183,8 +2187,9 @@ function renderClients() {
                   <td style="font-weight:600">${fmt(total)}</td>
                   <td style="font-weight:600;color:${balance > 0 ? '#dc2626' : 'var(--green)'}">${fmt(balance)}</td>
                   <td style="text-align:center">${cInvs.length}</td>
-                  <td>
+                  <td style="white-space:nowrap">
                     <button class="btn btn-sm btn-outline" style="padding:3px 7px" onclick="openEditClient('${c.id}')" title="Edit"><i class="ti ti-pencil" style="font-size:11px"></i></button>
+                    <button class="btn btn-sm btn-outline" style="padding:3px 7px;color:#dc2626;border-color:#fca5a5;margin-left:3px" onclick="deleteClient('${c.id}')" title="Delete"><i class="ti ti-trash" style="font-size:11px"></i></button>
                   </td>
                 </tr>`;
               }).join('')}
