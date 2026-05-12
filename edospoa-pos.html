@@ -964,6 +964,56 @@ function resolveModulePage(mod) {
 // All possible POS perms
 const ALL_POS_PERMS = ['dashboard','pos','invoices','clients','inventory','analytics','users','services','settings','modules'];
 
+// ── GRANULAR ACTION PERMISSIONS ───────────────────────────
+const ACTION_PERMS = [
+  { key:'inv.create',         label:'Create New Invoices',            group:'Invoices'   },
+  { key:'inv.edit',           label:'Edit Invoice Details',           group:'Invoices'   },
+  { key:'inv.delete',         label:'Delete Invoices',                group:'Invoices'   },
+  { key:'inv.print',          label:'Print / Download Invoice PDF',   group:'Invoices'   },
+  { key:'inv.record_payment', label:'Record Payments on Invoices',    group:'Invoices'   },
+  { key:'inv.apply_discount', label:'Apply Discounts on Invoices',    group:'Invoices'   },
+  { key:'pos.checkout',       label:'Complete Sale / Checkout',       group:'POS / Sales'},
+  { key:'pos.edit_price',     label:'Edit Item Prices in Cart',       group:'POS / Sales'},
+  { key:'pos.apply_discount', label:'Apply Discount % at POS',        group:'POS / Sales'},
+  { key:'clients.create',     label:'Add New Clients',                group:'Clients'    },
+  { key:'clients.edit',       label:'Edit Client Details',            group:'Clients'    },
+  { key:'clients.delete',     label:'Delete Clients',                 group:'Clients'    },
+  { key:'inventory.add',      label:'Add Inventory Items',            group:'Inventory'  },
+  { key:'inventory.edit',     label:'Edit Inventory Items',           group:'Inventory'  },
+  { key:'inventory.delete',   label:'Delete Inventory Items',         group:'Inventory'  },
+  { key:'analytics.view',     label:'View Analytics & Reports',       group:'Analytics'  },
+  { key:'analytics.export',   label:'Export / Download Reports',      group:'Analytics'  },
+  { key:'settings.edit',      label:'Edit Business Settings',         group:'Settings'   },
+  { key:'settings.logo',      label:'Upload / Change Business Logo',  group:'Settings'   },
+  { key:'staff.manage',       label:'Add, Edit & Remove Staff',       group:'Staff'      },
+];
+
+function defaultPermsForRole(role) {
+  const all = Object.fromEntries(ACTION_PERMS.map(p => [p.key, true]));
+  if (role === 'owner' || role === 'admin') return all;
+  if (role === 'manager') {
+    return { ...all, 'settings.edit':false, 'settings.logo':false, 'staff.manage':false, 'inv.delete':false, 'clients.delete':false, 'inventory.delete':false };
+  }
+  // cashier
+  return {
+    'inv.create':true, 'inv.edit':false, 'inv.delete':false, 'inv.print':true,
+    'inv.record_payment':true, 'inv.apply_discount':false,
+    'pos.checkout':true, 'pos.edit_price':false, 'pos.apply_discount':false,
+    'clients.create':true, 'clients.edit':true, 'clients.delete':false,
+    'inventory.add':false, 'inventory.edit':false, 'inventory.delete':false,
+    'analytics.view':false, 'analytics.export':false,
+    'settings.edit':false, 'settings.logo':false, 'staff.manage':false,
+  };
+}
+
+function hasPerm(key) {
+  if (!currentUser) return false;
+  if (currentUser.role === 'owner') return true;
+  const ap = currentUser.actionPerms;
+  if (!ap) return currentUser.role === 'admin';
+  return ap[key] === true;
+}
+
 // ── 3-STEP LOGIN ──────────────────────────────────────────
 async function epStep1Next() {
   const shopId = document.getElementById('ep-shop-id').value.trim();
@@ -1113,9 +1163,12 @@ async function epFinalLogin() {
   const allowedDepts = (staffRecord.allowed_depts && staffRecord.allowed_depts.length)
     ? staffRecord.allowed_depts : null;
 
+  const actionPerms = staffRecord.custom_perms || defaultPermsForRole(role);
+
   currentUser = {
     id: staffRecord.id, username, name: staffRecord.full_name,
-    role, shopId: currentShopId, shopName: currentShopName, perms, allowedDepts
+    role, shopId: currentShopId, shopName: currentShopName, perms, allowedDepts,
+    actionPerms
   };
 
   document.getElementById('login-screen').style.display = 'none';
@@ -1529,7 +1582,7 @@ function renderPOS() {
             <label>Event Date</label><input type="date" id="cart-date" value="${now().toISOString().slice(0,10)}"/>
           </div>
           <div>
-            <label>Discount %</label><input type="number" id="disc-pct" placeholder="0" min="0" max="100" oninput="recalc()"/>
+            <label>Discount %</label><input type="number" id="disc-pct" placeholder="0" min="0" max="100" oninput="recalc()" ${!hasPerm('pos.apply_discount') ? 'disabled title="Discount not permitted"' : ''}/>
           </div>
         </div>
         <div class="cart-items" id="cart-items"><div style="color:var(--muted);font-size:11px;text-align:center;padding:16px">Tap a service to add</div></div>
@@ -1624,8 +1677,8 @@ function updateCartUI() {
       <div style="display:flex;align-items:center;gap:2px">
         <span style="font-size:9px;color:var(--muted)">KSh</span>
         <input type="number" value="${c.price}" min="0" step="1"
-          style="width:72px;padding:2px 4px;font-size:11px;font-weight:600;text-align:right;color:var(--red);border:1px solid var(--border);border-radius:4px;background:#fff8f8"
-          onchange="setPrice('${c.id}',this.value)" title="Edit unit price"/>
+          style="width:72px;padding:2px 4px;font-size:11px;font-weight:600;text-align:right;color:var(--red);border:1px solid var(--border);border-radius:4px;background:${hasPerm('pos.edit_price')?'#fff8f8':'#f5f5f3'}"
+          ${hasPerm('pos.edit_price') ? `onchange="setPrice('${c.id}',this.value)" title="Edit unit price"` : 'readonly title="Price editing not permitted"'}/>
       </div>
       ${c.qty > 1 ? `<span style="font-size:9px;color:var(--muted)">= ${fmt(c.price * c.qty)}</span>` : ''}
     </div>
@@ -2101,8 +2154,8 @@ function showInvoice(idOrInv) {
       ${emailBtn}
       ${waBtn}
       <button class="btn btn-outline btn-sm" onclick="window.print()"><i class="ti ti-printer"></i> Print</button>
-      ${balance > 0 ? `<button class="btn btn-green btn-sm" onclick="openPaymentModal('${inv.id}')"><i class="ti ti-plus"></i> Record Payment</button>` : ''}
-      ${status === 'Unpaid' ? `<button class="btn btn-amber btn-sm" onclick="markFullyPaid('${inv.id}')"><i class="ti ti-check"></i> Mark Paid</button>` : ''}
+      ${balance > 0 && hasPerm('inv.record_payment') ? `<button class="btn btn-green btn-sm" onclick="openPaymentModal('${inv.id}')"><i class="ti ti-plus"></i> Record Payment</button>` : ''}
+      ${status === 'Unpaid' && hasPerm('inv.record_payment') ? `<button class="btn btn-amber btn-sm" onclick="markFullyPaid('${inv.id}')"><i class="ti ti-check"></i> Mark Paid</button>` : ''}
     </div>`;
   openModal('inv-modal');
 }
@@ -2250,8 +2303,8 @@ function renderInvoices() {
               <td><span class="badge ${st==='Paid'?'badge-green':st==='Partial'?'badge-amber':'badge-red'}">${st}</span></td>
               <td style="color:var(--muted);font-size:10px">${i.date}</td>
               <td onclick="event.stopPropagation()" style="white-space:nowrap">
-                ${bal > 0 ? `<button class="btn btn-sm btn-green" onclick="openPaymentModal('${i.id}')" style="margin-right:3px"><i class="ti ti-plus"></i></button>` : ''}
-                <button class="btn btn-sm btn-outline" style="padding:3px 7px;color:#dc2626;border-color:#fca5a5" onclick="deleteInvoice('${i.id}')" title="Delete"><i class="ti ti-trash" style="font-size:11px"></i></button>
+                ${bal > 0 && hasPerm('inv.record_payment') ? `<button class="btn btn-sm btn-green" onclick="openPaymentModal('${i.id}')" style="margin-right:3px"><i class="ti ti-plus"></i></button>` : ''}
+                ${hasPerm('inv.delete') ? `<button class="btn btn-sm btn-outline" style="padding:3px 7px;color:#dc2626;border-color:#fca5a5" onclick="deleteInvoice('${i.id}')" title="Delete"><i class="ti ti-trash" style="font-size:11px"></i></button>` : ''}
               </td>
             </tr>`;
           }).join('')}
@@ -2275,7 +2328,7 @@ function renderClients() {
         <div class="search-bar" style="width:260px;margin:0"><i class="ti ti-search"></i><input placeholder="Search clients…" value="${clientSearch}" oninput="clientSearch=this.value;renderClients()"/></div>
         <span style="font-size:11px;color:var(--muted)">${list.length} client${list.length !== 1 ? 's' : ''}</span>
       </div>
-      <button class="btn btn-red btn-sm" onclick="openNewClientModal()"><i class="ti ti-plus"></i> Add Client</button>
+      ${hasPerm('clients.create') ? `<button class="btn btn-red btn-sm" onclick="openNewClientModal()"><i class="ti ti-plus"></i> Add Client</button>` : ''}
     </div>
     <div class="card" style="padding:0;overflow:hidden">
       ${!list.length
@@ -2321,8 +2374,8 @@ function renderClients() {
                   <td style="font-weight:600;color:${balance > 0 ? '#dc2626' : 'var(--green)'}">${fmt(balance)}</td>
                   <td style="text-align:center">${cInvs.length}</td>
                   <td style="white-space:nowrap">
-                    <button class="btn btn-sm btn-outline" style="padding:3px 7px" onclick="openEditClient('${c.id}')" title="Edit"><i class="ti ti-pencil" style="font-size:11px"></i></button>
-                    <button class="btn btn-sm btn-outline" style="padding:3px 7px;color:#dc2626;border-color:#fca5a5;margin-left:3px" onclick="deleteClient('${c.id}')" title="Delete"><i class="ti ti-trash" style="font-size:11px"></i></button>
+                    ${hasPerm('clients.edit') ? `<button class="btn btn-sm btn-outline" style="padding:3px 7px" onclick="openEditClient('${c.id}')" title="Edit"><i class="ti ti-pencil" style="font-size:11px"></i></button>` : ''}
+                    ${hasPerm('clients.delete') ? `<button class="btn btn-sm btn-outline" style="padding:3px 7px;color:#dc2626;border-color:#fca5a5;margin-left:3px" onclick="deleteClient('${c.id}')" title="Delete"><i class="ti ti-trash" style="font-size:11px"></i></button>` : ''}
                   </td>
                 </tr>`;
               }).join('')}
@@ -2931,7 +2984,7 @@ const ROLE_DESC   = { owner:'Full access + user mgmt', admin:'Full access — al
 
 async function renderUsers() {
   const el = document.getElementById('page-users');
-  const canManage = ['owner','admin'].includes(currentUser?.role);
+  const canManage = hasPerm('staff.manage');
   el.innerHTML = `<div class="card" style="text-align:center;padding:24px;color:var(--muted)">
     <div class="spin" style="width:16px;height:16px;margin:0 auto 8px;border-top-color:#00A550"></div>Loading staff…</div>`;
 
@@ -2942,6 +2995,7 @@ async function renderUsers() {
       if (data) staffList = data;
     } catch(e) { console.warn('Staff load error:', e); }
   }
+  window._staffList = staffList;
 
   el.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
@@ -2972,7 +3026,7 @@ async function renderUsers() {
             </th>`).join('')}
             <th style="padding:10px 12px;min-width:160px">Departments</th>
             <th style="text-align:center;padding:10px 8px">Active</th>
-            ${canManage ? `<th style="text-align:center;padding:10px 8px">Password</th><th style="text-align:center;padding:10px 8px">Remove</th>` : ''}
+            ${canManage ? `<th style="text-align:center;padding:10px 8px">Password</th><th style="text-align:center;padding:10px 8px">Perms</th><th style="text-align:center;padding:10px 8px">Remove</th>` : ''}
           </tr>
         </thead>
         <tbody>
@@ -3035,6 +3089,9 @@ async function renderUsers() {
                 ${canManage ? `
                 <td style="text-align:center;padding:8px">
                   ${canEdit ? `<button class="btn btn-sm btn-outline" style="padding:3px 8px" title="Change password" onclick="openPwdModal('${u.id}','${(u.full_name||u.username).replace(/'/g,"\\'")}')"><i class="ti ti-key" style="font-size:12px"></i></button>` : '—'}
+                </td>
+                <td style="text-align:center;padding:8px">
+                  ${canEdit ? `<button class="btn btn-sm btn-outline" style="padding:3px 8px;color:var(--blue);border-color:#bfdbfe" title="Edit permissions" onclick="openPermsModal('${u.id}')"><i class="ti ti-shield-check" style="font-size:12px"></i></button>` : '—'}
                 </td>
                 <td style="text-align:center;padding:8px">
                   ${canEdit ? `<button class="btn btn-sm" style="padding:3px 8px;background:#fee2e2;color:#991b1b;border:1px solid #fecaca" onclick="deleteStaff('${u.id}','${(u.full_name||u.username).replace(/'/g,"\\'")}')"><i class="ti ti-trash" style="font-size:12px"></i></button>` : '—'}
@@ -3260,6 +3317,86 @@ async function deleteStaff(id, name) {
     await sb.from('pos_staff').delete().eq('id', id);
     renderUsers();
   } catch(e) { alert('Error: ' + e.message); }
+}
+
+// ── PERMISSIONS MODAL ─────────────────────────────────────
+const PERM_GROUP_ICONS = {
+  'Invoices':   'ti-file-invoice',
+  'POS / Sales':'ti-device-desktop',
+  'Clients':    'ti-users',
+  'Inventory':  'ti-package',
+  'Analytics':  'ti-chart-bar',
+  'Settings':   'ti-settings',
+  'Staff':      'ti-id-badge',
+};
+
+function openPermsModal(userId) {
+  const u = (window._staffList || []).find(x => x.id === userId);
+  if (!u) return;
+  const name = u.full_name || u.username;
+  const role = u.role;
+  const currentPerms = u.custom_perms || defaultPermsForRole(role);
+
+  const groups = {};
+  ACTION_PERMS.forEach(p => {
+    if (!groups[p.group]) groups[p.group] = [];
+    groups[p.group].push(p);
+  });
+
+  document.getElementById('role-modal-name').textContent = name;
+  document.getElementById('role-modal-body').innerHTML = `
+    <div style="font-size:11px;color:var(--muted);margin-bottom:14px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:6px;padding:8px 12px">
+      Role: <strong style="text-transform:capitalize;color:${ROLE_COLORS[role]||'var(--text)'}">${role}</strong>
+      &nbsp;·&nbsp; Check or uncheck each action. Unchecked = blocked for this user.
+    </div>
+    <div style="display:grid;gap:10px;max-height:60vh;overflow-y:auto;padding-right:2px">
+      ${Object.entries(groups).map(([grp, perms]) => `
+        <div style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
+          <div style="background:#f5f5f3;padding:7px 12px;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);display:flex;align-items:center;gap:6px">
+            <i class="ti ${PERM_GROUP_ICONS[grp]||'ti-lock'}" style="font-size:13px"></i>${grp}
+          </div>
+          <div style="padding:6px 12px;display:grid;gap:2px">
+            ${perms.map(p => `
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:5px 0;border-bottom:1px solid #f5f5f3">
+                <input type="checkbox" name="ap" value="${p.key}" ${currentPerms[p.key] ? 'checked' : ''}
+                  style="width:14px;height:14px;accent-color:var(--blue);cursor:pointer;flex-shrink:0"/>
+                <span style="font-size:11.5px;color:var(--text)">${p.label}</span>
+              </label>`).join('')}
+          </div>
+        </div>`).join('')}
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px;border-top:1px solid var(--border);padding-top:14px;flex-wrap:wrap">
+      <button class="btn" style="flex:1;justify-content:center;background:var(--blue);color:#fff;min-width:140px" onclick="savePermsModal('${userId}')">
+        <i class="ti ti-shield-check"></i> Save Permissions</button>
+      <button class="btn btn-outline" style="padding:7px 14px" onclick="resetPermsToDefault('${userId}','${role}')">
+        <i class="ti ti-refresh"></i> Role Defaults</button>
+      <button class="btn btn-outline" onclick="closeModal('role-modal')">Cancel</button>
+    </div>
+    <div id="perms-save-err" style="color:#dc2626;font-size:11px;margin-top:6px;text-align:center"></div>`;
+  openModal('role-modal');
+}
+
+async function savePermsModal(userId) {
+  const checks = document.querySelectorAll('#role-modal-body input[name="ap"]');
+  const perms = {};
+  checks.forEach(c => { perms[c.value] = c.checked; });
+  try {
+    const { error } = await sb.from('pos_staff').update({ custom_perms: perms }).eq('id', userId);
+    if (error) throw error;
+    const u = (window._staffList || []).find(x => x.id === userId);
+    if (u) u.custom_perms = perms;
+    closeModal('role-modal');
+  } catch(e) {
+    const errEl = document.getElementById('perms-save-err');
+    if (errEl) errEl.textContent = 'Error: ' + e.message;
+  }
+}
+
+function resetPermsToDefault(userId, role) {
+  const defaults = defaultPermsForRole(role);
+  document.querySelectorAll('#role-modal-body input[name="ap"]').forEach(c => {
+    c.checked = defaults[c.value] === true;
+  });
 }
 
 // ── SETTINGS ─────────────────────────────────────────────
