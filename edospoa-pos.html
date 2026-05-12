@@ -1895,7 +1895,7 @@ function buildInvoiceHTML(inv) {
         if (isFullPkg) {
           const subs = item.desc.split(',').map(s => s.trim()).filter(Boolean);
           rows.push(`<tr>
-            <td><strong>${item.name}</strong><br/><span style="font-size:10px;color:#888;line-height:1.7">${subs.join(' &bull; ')}</span></td>
+            <td><strong>${item.name}</strong><br/><span style="font-size:10px;color:#888;line-height:1.9">${subs.join('<br/>')}</span></td>
             <td class="c">${item.qty}</td>
             <td class="r">${fmt(item.price)}</td>
             <td class="r">${fmt(item.price * item.qty)}</td>
