@@ -554,6 +554,13 @@ function initSupabase(url, key) {
   showDbBadge(true);
 }
 
+function initShopSession(shopId) {
+  if (!useSupabase) return;
+  sb = window.supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.key, {
+    global: { headers: { 'x-shop-id': shopId } }
+  });
+}
+
 function skipSupabase() {
   document.getElementById('sb-setup').style.display = 'none';
   showDbBadge(false);
@@ -574,25 +581,25 @@ function showDbBadge(connected) {
 // ── DB HELPERS ─────────────────────────────────────────
 async function dbInsertClient(c) {
   if (!useSupabase) return;
-  await sb.from('clients').upsert({ id: c.id, name: c.name, phone: c.phone, email: c.email, event: c.event, birthday: c.birthday || null, notes: c.notes, referral_code: c.referral_code || null, referred_by: c.referred_by || null, created_at: c.createdAt });
+  await sb.from('clients').upsert({ id: c.id, shop_id: currentShopId, name: c.name, phone: c.phone, email: c.email, event: c.event, birthday: c.birthday || null, notes: c.notes, referral_code: c.referral_code || null, referred_by: c.referred_by || null, created_at: c.createdAt });
 }
 async function dbInsertInvoice(inv) {
   if (!useSupabase) return;
-  await sb.from('invoices').upsert({ id: inv.id, data: inv, created_at: new Date().toISOString() });
+  await sb.from('invoices').upsert({ id: inv.id, shop_id: currentShopId, data: inv, created_at: new Date().toISOString() });
 }
 async function dbUpdateInvoice(inv) {
   if (!useSupabase) return;
-  await sb.from('invoices').update({ data: inv }).eq('id', inv.id);
+  await sb.from('invoices').update({ data: inv }).eq('id', inv.id).eq('shop_id', currentShopId);
 }
 async function dbInsertPayment(p) {
   if (!useSupabase) return;
-  await sb.from('payments').upsert({ id: p.id, invoice_id: p.invoiceId, amount: p.amount, method: p.method, note: p.note, paid_at: p.paidAt });
+  await sb.from('payments').upsert({ id: p.id, shop_id: currentShopId, invoice_id: p.invoiceId, amount: p.amount, method: p.method, note: p.note, paid_at: p.paidAt });
 }
 
 async function deleteClient(id) {
   if (!confirm('Delete this client? This cannot be undone.')) return;
   clients = clients.filter(c => c.id !== id);
-  if (useSupabase) await sb.from('clients').delete().eq('id', id);
+  if (useSupabase) await sb.from('clients').delete().eq('id', id).eq('shop_id', currentShopId);
   renderClients();
 }
 
@@ -601,8 +608,8 @@ async function deleteInvoice(id) {
   invoices = invoices.filter(i => i.id !== id);
   payments = payments.filter(p => p.invoiceId !== id);
   if (useSupabase) {
-    await sb.from('payments').delete().eq('invoice_id', id);
-    await sb.from('invoices').delete().eq('id', id);
+    await sb.from('payments').delete().eq('invoice_id', id).eq('shop_id', currentShopId);
+    await sb.from('invoices').delete().eq('id', id).eq('shop_id', currentShopId);
   }
   renderInvoices();
   renderDashboard();
@@ -876,9 +883,9 @@ async function loadFromSupabase() {
   if (!useSupabase) return;
   try {
     const [{ data: cls }, { data: invs }, { data: pays }] = await Promise.all([
-      sb.from('clients').select('*'),
-      sb.from('invoices').select('*').order('created_at', { ascending: false }),
-      sb.from('payments').select('*'),
+      sb.from('clients').select('*').eq('shop_id', currentShopId),
+      sb.from('invoices').select('*').eq('shop_id', currentShopId).order('created_at', { ascending: false }),
+      sb.from('payments').select('*').eq('shop_id', currentShopId),
     ]);
     if (cls) clients = cls.map(r => ({ id: r.id, name: r.name, phone: r.phone, email: r.email, event: r.event, birthday: r.birthday || null, notes: r.notes, referral_code: r.referral_code || null, referred_by: r.referred_by || null, createdAt: r.created_at }));
     if (invs) invoices = invs.map(r => r.data);
@@ -1119,6 +1126,7 @@ async function epFinalLogin() {
   if (shopEl) shopEl.textContent = currentShopName || currentShopId;
 
   buildSidebar();
+  initShopSession(currentShopId);
   await loadFromSupabase();
   navToFirstAllowed();
 
@@ -1145,6 +1153,7 @@ async function doLogin() { epFinalLogin(); }
 function logout() {
   currentUser = null; cart = [];
   currentShopId = ''; currentShopName = ''; assignedModules = [];
+  if (useSupabase) sb = window.supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.key);
   document.getElementById('app').classList.remove('show');
   document.getElementById('login-screen').style.display = 'flex';
   document.getElementById('ep-step1').style.display = 'block';
