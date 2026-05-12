@@ -18,18 +18,27 @@
   --topbar:#ffffff;--page-bg:#f0f0ee;
 }
 body{background:var(--page-bg);color:var(--text);font-size:13px}
-#login-screen{position:fixed;inset:0;background:linear-gradient(135deg,#1e2235 0%,#2d3561 100%);display:flex;align-items:center;justify-content:center;z-index:9999}
-.login-box{background:#fff;border-radius:16px;padding:36px 40px;width:360px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
-.login-logo{display:flex;align-items:center;gap:10px;margin-bottom:28px;justify-content:center}
-.login-icon{width:44px;height:44px;background:var(--red);border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:22px}
-.login-title{font-size:15px;font-weight:700;line-height:1.2;color:#1a1a1a}
-.login-title span{color:#888;font-size:11px;display:block;font-weight:400}
-.login-field{margin-bottom:14px}
-.login-field label{font-size:11px;color:#666;display:block;margin-bottom:5px}
-.login-field input,.login-field select{width:100%;background:#f5f5f3;border:1px solid #ddd;border-radius:8px;padding:10px 12px;color:#1a1a1a;font-size:13px}
-.login-err{color:#dc2626;font-size:12px;margin-bottom:10px;text-align:center;min-height:16px}
-.btn-login{width:100%;padding:11px;background:var(--red);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer}
-.btn-login:hover{background:#a01e22}
+/* ── EdosPoa Login (3-step) ── */
+#login-screen{position:fixed;inset:0;background:#edecea;background-image:radial-gradient(#d4d1cc 1px,transparent 1px);background-size:28px 28px;display:flex;align-items:center;justify-content:center;z-index:9999}
+.ep-login-box{background:#1e2a1e;border-radius:20px;padding:40px 44px;width:400px;box-shadow:0 24px 80px rgba(0,0,0,.35);position:relative}
+.ep-brand{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.ep-brand-logo{width:38px;height:38px;background:#00A550;border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.75rem;color:#fff;font-family:sans-serif;letter-spacing:-.5px}
+.ep-brand-name{font-size:22px;font-weight:700;color:#fff;letter-spacing:-.5px}
+.ep-brand-name span{color:#00A550}
+.ep-subtitle{font-size:11px;color:#8a9e8a;margin-bottom:32px}
+.ep-shop-badge{display:flex;align-items:center;gap:6px;font-size:11px;color:#5dcc80;margin-bottom:18px;cursor:pointer}
+.ep-shop-badge:hover{text-decoration:underline}
+.ep-step-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;font-size:10px;color:#5a7a5a;letter-spacing:.5px;text-transform:uppercase}
+.ep-step-bar .ep-step-line{flex:1;height:1px;background:#2e4030;margin:0 8px}
+.ep-label{font-size:10px;color:#7a9a7a;letter-spacing:.8px;text-transform:uppercase;margin-bottom:8px}
+.ep-input{width:100%;background:#152115;border:1.5px solid #2e4030;border-radius:10px;padding:13px 14px;color:#e8f0e8;font-size:14px;outline:none;transition:border-color .2s;font-family:inherit}
+.ep-input:focus{border-color:#00A550}
+.ep-input::placeholder{color:#3a5a3a}
+.ep-btn{width:100%;margin-top:16px;padding:13px;background:#00A550;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:background .15s;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px}
+.ep-btn:hover{background:#00c261}
+.ep-btn:disabled{opacity:.5;cursor:not-allowed}
+.ep-err{color:#f87171;font-size:11px;margin-top:8px;text-align:center;min-height:16px}
+.ep-demo-hint{text-align:center;margin-top:16px;font-size:10px;color:#4a6a4a}
 #app{display:none;height:100vh;overflow:hidden;flex-direction:column}
 #app.show{display:flex}
 .topbar{height:52px;background:var(--topbar);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 18px;gap:10px;flex-shrink:0;box-shadow:0 1px 3px rgba(0,0,0,.06)}
@@ -237,19 +246,48 @@ create policy "allow all" on payments for all using (true) with check (true);</p
   </div>
 </div>
 
-<!-- LOGIN -->
+<!-- ── EdosPoa 3-Step Login ── -->
 <div id="login-screen">
-  <div class="login-box">
-    <div class="login-logo">
-      <div class="login-icon">M</div>
-      <div class="login-title">Mejason Media Production<span>Point of Sale System</span></div>
+  <div class="ep-login-box">
+    <div class="ep-brand">
+      <div class="ep-brand-logo">EP</div>
+      <div class="ep-brand-name">Edos<span>Poa</span></div>
     </div>
-    <div id="db-mode-badge" style="text-align:center;margin-bottom:12px"></div>
-    <div class="login-field"><label>Username</label><input id="li-user" placeholder="Enter username" onkeydown="if(event.key==='Enter')doLogin()"/></div>
-    <div class="login-field"><label>Password</label><input id="li-pass" type="password" placeholder="Enter password" onkeydown="if(event.key==='Enter')doLogin()"/></div>
-    <div class="login-err" id="li-err"></div>
-    <button class="btn-login" onclick="doLogin()">Sign In</button>
-    <div style="text-align:center;margin-top:14px;font-size:10px;color:#aaa">Demo: admin/admin &nbsp;|&nbsp; cashier/cashier &nbsp;|&nbsp; manager/manager</div>
+    <div class="ep-subtitle">Kenya's Smart POS — Staff Login</div>
+
+    <!-- STEP 1: Shop/Client ID -->
+    <div id="ep-step1">
+      <div class="ep-step-bar"><span>STEP 1 OF 3</span><div class="ep-step-line"></div><span>SHOP ID</span></div>
+      <div class="ep-label">SHOP / CLIENT ID</div>
+      <input class="ep-input" id="ep-shop-id" placeholder="e.g. client-1778569091064"
+        onkeydown="if(event.key==='Enter')epStep1Next()"/>
+      <button class="ep-btn" onclick="epStep1Next()">Continue →</button>
+      <div class="ep-err" id="ep-err1"></div>
+      <div class="ep-demo-hint">Demo IDs: client-001 · client-002 · client-003</div>
+    </div>
+
+    <!-- STEP 2: Username -->
+    <div id="ep-step2" style="display:none">
+      <div id="ep-shop-back" class="ep-shop-badge" onclick="epGoBack(1)">← Change shop</div>
+      <div class="ep-step-bar"><span>STEP 2 OF 3</span><div class="ep-step-line"></div><span>USERNAME</span></div>
+      <div class="ep-label">YOUR USERNAME</div>
+      <input class="ep-input" id="ep-username" placeholder="Enter your username"
+        onkeydown="if(event.key==='Enter')epStep2Next()"/>
+      <button class="ep-btn" onclick="epStep2Next()">Continue →</button>
+      <div class="ep-err" id="ep-err2"></div>
+      <div class="ep-demo-hint" id="ep-demo-users"></div>
+    </div>
+
+    <!-- STEP 3: Password -->
+    <div id="ep-step3" style="display:none">
+      <div class="ep-shop-badge" onclick="epGoBack(2)">← Change username</div>
+      <div class="ep-step-bar"><span>STEP 3 OF 3</span><div class="ep-step-line"></div><span>PASSWORD</span></div>
+      <div class="ep-label">PASSWORD</div>
+      <input class="ep-input" type="password" id="ep-password" placeholder="Enter your password"
+        onkeydown="if(event.key==='Enter')epFinalLogin()"/>
+      <button class="ep-btn" id="ep-login-btn" onclick="epFinalLogin()">Sign In →</button>
+      <div class="ep-err" id="ep-err3"></div>
+    </div>
   </div>
 </div>
 
@@ -257,15 +295,16 @@ create policy "allow all" on payments for all using (true) with check (true);</p
 <div id="app" style="position:relative">
   <div class="topbar">
     <div class="topbar-brand">
-      <div class="tb-icon">M</div>
-      <span style="font-size:12px;font-weight:700;color:var(--text)">mejason <span style="color:var(--red)">POS</span></span>
+      <div class="tb-icon" style="background:#00A550;font-size:.6rem;font-weight:800;letter-spacing:-.5px">EP</div>
+      <span style="font-size:12px;font-weight:700;color:var(--text)">Edos<span style="color:#00A550">Poa</span></span>
     </div>
     <div class="topbar-title" id="page-title">Dashboard</div>
     <div class="topbar-info">
       <span id="tb-date" style="font-size:11px;color:var(--muted)"></span>
+      <span id="tb-shop-name" style="font-size:11px;color:#00A550;font-weight:600"></span>
       <div id="db-status-chip"></div>
-      <div class="user-chip"><div class="user-dot"></div><span id="tb-user">—</span> <span id="tb-role" style="color:var(--muted)"></span></div>
-      <button class="btn btn-sm btn-red" onclick="nav('pos',0)"><i class="ti ti-plus"></i> New Sale</button>
+      <div class="user-chip"><div class="user-dot" style="background:#00A550"></div><span id="tb-user">—</span> <span id="tb-role" style="color:var(--muted)"></span></div>
+      <button class="btn btn-sm" style="background:#00A550;color:#fff" onclick="navToFirstAllowed()"><i class="ti ti-plus"></i> New Sale</button>
       <button class="btn btn-sm btn-outline" onclick="logout()"><i class="ti ti-logout"></i></button>
     </div>
   </div>
@@ -281,6 +320,7 @@ create policy "allow all" on payments for all using (true) with check (true);</p
       <div class="page" id="page-users"></div>
       <div class="page" id="page-settings"></div>
       <div class="page" id="page-services"></div>
+      <div class="page" id="page-modules"></div>
     </div>
   </div>
 
@@ -385,7 +425,7 @@ create policy "allow all" on payments for all using (true) with check (true);</p
   <div class="modal-bg" id="edit-user-modal">
     <div class="modal" style="width:420px">
       <div class="modal-hdr">
-        <span><i class="ti ti-user-edit" style="color:var(--blue)"></i> Edit User</span>
+        <span><i class="ti ti-key" style="color:var(--blue)"></i> Change Password</span>
         <button class="btn btn-outline btn-sm" onclick="closeModal('edit-user-modal')"><i class="ti ti-x"></i></button>
       </div>
       <div style="padding:18px" id="edit-user-modal-body"></div>
@@ -405,10 +445,12 @@ const uid = () => Math.random().toString(36).slice(2, 8).toUpperCase();
 // ── SUPABASE ────────────────────────────────────────────
 let sb = null, useSupabase = false;
 
-// ⚙️ UPDATE THESE WITH YOUR SUPABASE CREDENTIALS
+// ⚙️ Single Supabase project shared with EdosPoa Admin
+// Both the POS and the Admin file use the SAME Supabase project so
+// clients, pos_modules, client_subscriptions and pos_staff are all in one place.
 const SUPABASE_CONFIG = {
-  url: 'https://YOUR_PROJECT_ID.supabase.co',
-  key: 'YOUR_ANON_PUBLIC_KEY'
+  url: 'https://cnlyuwslpcgosgwdmzav.supabase.co',
+  key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNubHl1d3NscGNnb3Nnd2RtemF2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyMjIxMjUsImV4cCI6MjA5Mzc5ODEyNX0.eYYuQLqWWLf61JFE0BpDqDu9LB7cX4CoW6E1P5xmMto'
 };
 
 window.onload = () => {
@@ -760,16 +802,275 @@ async function loadFromSupabase() {
   } catch (e) { console.warn('Supabase load error', e); }
 }
 
-// ── USERS ──────────────────────────────────────────────
-let USERS = [
-  { id: 'u1', username: 'admin', password: 'admin', name: 'Admin User', role: 'admin', color: '#C8252A',
-    perms: ['dashboard','pos','invoices','clients','inventory','analytics','users','services','settings'] },
-  { id: 'u2', username: 'manager', password: 'manager', name: 'Mejason W.', role: 'manager', color: '#2563eb',
-    perms: ['dashboard','pos','invoices','clients','inventory','analytics','services'] },
-  { id: 'u3', username: 'cashier', password: 'cashier', name: 'Cashier', role: 'cashier', color: '#16a34a',
-    perms: ['pos','invoices','clients'] },
-];
-let currentUser = null;
+// ── SHOP / CLIENT CONTEXT ─────────────────────────────────
+let currentShopId   = '';
+let currentShopName = '';
+let currentShopData = null;
+let assignedModules = [];
+let currentUser     = null;
+
+// Module ID → POS page mapping (exact IDs from EdosPoa admin seed)
+const MODULE_PERM_MAP = {
+  // Core POS
+  'mod-pos-sales':     'pos',
+  'mod-pos-invoicing': 'invoices',
+  'mod-pos-clients':   'clients',
+  'mod-pos-dashboard': 'dashboard',
+  'mod-pos-payments':  'invoices',
+  'mod-pos-analytics': 'analytics',
+  'mod-pos-inventory': 'inventory',
+  'mod-pos-services':  'services',
+  'mod-pos-mpesa':     'pos',
+  'mod-pos-email':     'pos',
+  'mod-pos-whatsapp':  'pos',
+  'mod-pos-users':     'users',
+  'mod-pos-depts':     'pos',      // dept setup → also unlocks pos
+  'mod-pos-settings':  'settings',
+};
+
+// Some modules unlock multiple pages
+const MODULE_MULTI_MAP = {
+  'mod-pos-depts': ['pos', 'services'], // dept setup unlocks both POS and Services
+  'mod-pos-sales': ['pos'],
+  'mod-pos-payments': ['invoices'],
+};
+
+// Fallback: resolve a module to POS page(s) using name/category/description
+// Returns an ARRAY of pages (may be multiple)
+function resolveModulePages(mod) {
+  if (!mod) return [];
+
+  // Check multi-map first
+  if (MODULE_MULTI_MAP[mod.id]) return MODULE_MULTI_MAP[mod.id];
+  // Then exact ID map
+  if (MODULE_PERM_MAP[mod.id]) return [MODULE_PERM_MAP[mod.id]];
+
+  const name = (mod.name || '').toLowerCase();
+  const cat  = (mod.category || '').toLowerCase();
+  const desc = (mod.description || '').toLowerCase();
+  const all  = name + ' ' + cat + ' ' + desc;
+
+  const pages = [];
+  if (/pos|sale|terminal|cart|billing|till|checkout/.test(all)) pages.push('pos');
+  if (/invoice|receipt|kra|etims|tims/.test(all)) pages.push('invoices');
+  if (/client|customer|crm|contact|loyalty|reward/.test(all)) pages.push('clients');
+  if (/dashboard|overview/.test(all)) pages.push('dashboard');
+  if (/analytic|report|chart|statistic|profit|loss|performance/.test(all)) pages.push('analytics');
+  if (/inventor|stock|warehouse|supply|purchase|batch|expir/.test(all)) pages.push('inventory');
+  if (/service|catalogue|catalog|department|dept|menu/.test(all)) pages.push('services');
+  if (/user|access|staff|role|permiss|hr|employ/.test(all)) pages.push('users');
+  if (/setting|config|setup|brand|mpesa|payment|sms|whatsapp|notification|cloud|offline|audit/.test(all)) pages.push('settings');
+
+  return pages.length ? pages : [];
+}
+
+// Backwards-compat single-page version
+function resolveModulePage(mod) {
+  const pages = resolveModulePages(mod);
+  return pages[0] || null;
+}
+
+// All possible POS perms
+const ALL_POS_PERMS = ['dashboard','pos','invoices','clients','inventory','analytics','users','services','settings','modules'];
+
+// ── 3-STEP LOGIN ──────────────────────────────────────────
+async function epStep1Next() {
+  const shopId = document.getElementById('ep-shop-id').value.trim();
+  const errEl  = document.getElementById('ep-err1');
+  errEl.textContent = '';
+  if (!shopId) { errEl.textContent = 'Please enter your Shop / Client ID.'; return; }
+
+  const btn = document.querySelector('#ep-step1 .ep-btn');
+  btn.disabled = true; btn.textContent = 'Looking up…';
+
+  let shopName = shopId;
+  if (useSupabase) {
+    try {
+      const { data, error } = await sb.from('clients').select('name,status').eq('id', shopId).single();
+      if (error || !data) {
+        btn.disabled = false; btn.textContent = 'Continue →';
+        errEl.textContent = 'Shop ID not found. Check and try again.';
+        return;
+      }
+      if (data.status === 'suspended') {
+        btn.disabled = false; btn.textContent = 'Continue →';
+        errEl.textContent = 'This account is suspended. Contact EdosPoa support.';
+        return;
+      }
+      shopName = data.name;
+    } catch(e) { console.warn('Shop lookup error:', e); }
+  }
+
+  currentShopId   = shopId;
+  currentShopName = shopName;
+
+  document.getElementById('ep-shop-back').innerHTML =
+    `<span style="color:#7a9a7a">📍 ${shopName}</span> &nbsp;<span style="color:#4a6a4a">← Change shop</span>`;
+
+  // Load demo usernames hint from pos_staff table
+  let demoHint = 'Enter your username';
+  if (useSupabase) {
+    try {
+      const { data: staffList } = await sb.from('pos_staff').select('username,role').eq('client_id', shopId).limit(4);
+      if (staffList?.length) demoHint = 'Users: ' + staffList.map(s => s.username).join(' · ');
+    } catch(e) {}
+  }
+  document.getElementById('ep-demo-users').textContent = demoHint;
+
+  document.getElementById('ep-step1').style.display = 'none';
+  document.getElementById('ep-step2').style.display = 'block';
+  setTimeout(() => document.getElementById('ep-username').focus(), 100);
+  btn.disabled = false; btn.textContent = 'Continue →';
+}
+
+function epStep2Next() {
+  const username = document.getElementById('ep-username').value.trim();
+  const errEl    = document.getElementById('ep-err2');
+  errEl.textContent = '';
+  if (!username) { errEl.textContent = 'Please enter your username.'; return; }
+  document.getElementById('ep-step2').style.display = 'none';
+  document.getElementById('ep-step3').style.display = 'block';
+  setTimeout(() => document.getElementById('ep-password').focus(), 100);
+}
+
+function epGoBack(toStep) {
+  document.getElementById('ep-step1').style.display = toStep === 1 ? 'block' : 'none';
+  document.getElementById('ep-step2').style.display = toStep === 2 ? 'block' : 'none';
+  document.getElementById('ep-step3').style.display = 'none';
+  if (toStep === 1) { currentShopId = ''; currentShopName = ''; document.getElementById('ep-shop-id').value = ''; }
+  if (toStep === 2) { document.getElementById('ep-password').value = ''; document.getElementById('ep-err3').textContent = ''; }
+}
+
+async function epFinalLogin() {
+  const username = document.getElementById('ep-username').value.trim();
+  const password = document.getElementById('ep-password').value;
+  const errEl    = document.getElementById('ep-err3');
+  const btn      = document.getElementById('ep-login-btn');
+  errEl.textContent = '';
+  if (!password) { errEl.textContent = 'Please enter your password.'; return; }
+  btn.disabled = true; btn.textContent = 'Signing in…';
+
+  let staffRecord = null;
+  if (useSupabase) {
+    try {
+      const { data, error } = await sb
+        .from('pos_staff')
+        .select('*')
+        .eq('client_id', currentShopId)
+        .eq('username', username)
+        .single();
+      if (!error && data) staffRecord = data;
+    } catch(e) {}
+  }
+
+  if (!staffRecord || staffRecord.password_hash !== password) {
+    btn.disabled = false; btn.textContent = 'Sign In →';
+    errEl.textContent = 'Incorrect username or password.';
+    return;
+  }
+
+  if (staffRecord.is_active === false) {
+    btn.disabled = false; btn.textContent = 'Sign In →';
+    errEl.textContent = 'Your account is disabled. Contact your admin.';
+    return;
+  }
+
+  // Load assigned modules
+  assignedModules = [];
+  if (useSupabase) {
+    try {
+      const { data: subs } = await sb
+        .from('client_subscriptions')
+        .select('*, pos_modules(*)')
+        .eq('client_id', currentShopId)
+        .eq('status', 'active');
+      if (subs) assignedModules = subs.map(s => s.pos_modules).filter(Boolean);
+    } catch(e) { console.warn('Module load error:', e); }
+  }
+
+  // ── BUILD PERMISSIONS ────────────────────────────────────
+  const role = staffRecord.role;
+  const isAdminRole = role === 'admin' || role === 'owner';
+
+  // Owner/Admin always have these regardless of modules
+  const OWNER_ALWAYS = ['dashboard', 'users', 'modules', 'settings'];
+
+  // Build page set from assigned modules (each module may unlock multiple pages)
+  const modulePerms = new Set();
+  assignedModules.forEach(mod => {
+    resolveModulePages(mod).forEach(page => modulePerms.add(page));
+  });
+
+  let perms;
+  if (isAdminRole) {
+    // Admin/Owner: pages from assigned modules PLUS their always-on management pages
+    perms = [...new Set([...modulePerms, ...OWNER_ALWAYS])];
+  } else if (role === 'cashier') {
+    // Cashier: only these pages — and only if the module is assigned
+    const CASHIER_ALLOWED = ['pos', 'invoices', 'clients'];
+    perms = [...modulePerms].filter(p => CASHIER_ALLOWED.includes(p));
+    perms.push('modules');
+  } else {
+    // Manager: exactly what modules unlock + My Modules
+    perms = [...modulePerms, 'modules'];
+  }
+
+  // Deduplicate
+  perms = [...new Set(perms)];
+
+  // allowed_depts: null/empty = see all; array = restricted to those dept IDs
+  const allowedDepts = (staffRecord.allowed_depts && staffRecord.allowed_depts.length)
+    ? staffRecord.allowed_depts : null;
+
+  currentUser = {
+    id: staffRecord.id, username, name: staffRecord.full_name,
+    role, shopId: currentShopId, shopName: currentShopName, perms, allowedDepts
+  };
+
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').classList.add('show');
+  document.getElementById('tb-user').textContent = staffRecord.full_name;
+  document.getElementById('tb-role').textContent = '· ' + role;
+  const shopEl = document.getElementById('tb-shop-name');
+  if (shopEl) shopEl.textContent = currentShopName || currentShopId;
+
+  buildSidebar();
+  await loadFromSupabase();
+  navToFirstAllowed();
+
+  setInterval(() => {
+    const el = document.getElementById('tb-date');
+    if (el) el.textContent = dateStr() + ' ' + timeStr();
+  }, 1000);
+  document.getElementById('tb-date').textContent = dateStr() + ' ' + timeStr();
+  btn.disabled = false; btn.textContent = 'Sign In →';
+}
+
+function navToFirstAllowed() {
+  // Try pages in priority order — only if in perms
+  const priority = ['pos','dashboard','invoices','clients','analytics','inventory','services','users','settings','modules'];
+  for (const p of priority) {
+    if (currentUser.perms.includes(p)) { nav(p, 0); return; }
+  }
+  // Last resort — show modules page (always exists)
+  nav('modules', 0);
+}
+
+async function doLogin() { epFinalLogin(); }
+
+function logout() {
+  currentUser = null; cart = [];
+  currentShopId = ''; currentShopName = ''; assignedModules = [];
+  document.getElementById('app').classList.remove('show');
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('ep-step1').style.display = 'block';
+  document.getElementById('ep-step2').style.display = 'none';
+  document.getElementById('ep-step3').style.display = 'none';
+  document.getElementById('ep-shop-id').value = '';
+  document.getElementById('ep-username').value = '';
+  document.getElementById('ep-password').value = '';
+  ['ep-err1','ep-err2','ep-err3'].forEach(id => document.getElementById(id).textContent = '');
+}
 
 const DEPTS = [
   { id: 'wedding',    name: 'Wedding',    icon: 'ti-heart',    color: '#C8252A' },
@@ -877,37 +1178,6 @@ function invStatus(inv) {
   return 'Unpaid';
 }
 
-// ── AUTH ─────────────────────────────────────────────────
-async function doLogin() {
-  const u = document.getElementById('li-user').value.trim();
-  const p = document.getElementById('li-pass').value;
-  const user = USERS.find(x => x.username === u && x.password === p);
-  if (!user) { document.getElementById('li-err').textContent = 'Invalid username or password.'; return; }
-  currentUser = user;
-  document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('app').classList.add('show');
-  document.getElementById('tb-user').textContent = user.name;
-  document.getElementById('tb-role').textContent = '· ' + user.role;
-  buildSidebar();
-  await loadFromSupabase();
-  renderDashboard();
-  nav('dashboard', 0);
-  setInterval(() => {
-    const el = document.getElementById('tb-date');
-    if (el) el.textContent = dateStr() + ' ' + timeStr();
-  }, 1000);
-  document.getElementById('tb-date').textContent = dateStr() + ' ' + timeStr();
-}
-
-function logout() {
-  currentUser = null;
-  cart = [];
-  document.getElementById('app').classList.remove('show');
-  document.getElementById('login-screen').style.display = 'flex';
-  document.getElementById('li-pass').value = '';
-  document.getElementById('li-err').textContent = '';
-}
-
 function buildSidebar() {
   const perms = currentUser.perms;
   const items = [
@@ -918,6 +1188,7 @@ function buildSidebar() {
     { key:'inventory', icon:'ti-package',           label:'Inventory',     section:null      },
     { key:'analytics', icon:'ti-chart-bar',         label:'Analytics',     section:'Reports' },
     { key:'users',     icon:'ti-shield-lock',       label:'Users & Access',section:'Admin'   },
+    { key:'modules',   icon:'ti-puzzle',            label:'My Modules',    section:null      },
     { key:'services',  icon:'ti-list',              label:'Services',      section:null      },
     { key:'settings',  icon:'ti-settings',          label:'Settings',      section:null      },
   ];
@@ -934,7 +1205,15 @@ function buildSidebar() {
 }
 
 function nav(page, scroll) {
-  if (!currentUser || !currentUser.perms.includes(page)) return;
+  if (!currentUser) return;
+  // Hard permission gate — if not in perms, redirect to modules page
+  if (!currentUser.perms.includes(page)) {
+    // Show a locked notice instead of silently failing
+    if (page !== 'modules') {
+      renderLockedPage(page);
+    }
+    return;
+  }
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('page-' + page).classList.add('active');
@@ -943,7 +1222,7 @@ function nav(page, scroll) {
   const titles = {
     dashboard:'Dashboard', pos:'New Sale', invoices:'Invoices', clients:'Clients',
     inventory:'Inventory', analytics:'Analytics & Reports', users:'Users & Access',
-    services:'Service Management', settings:'Settings'
+    services:'Service Management', settings:'Settings', modules:'My Modules'
   };
   document.getElementById('page-title').textContent = titles[page] || page;
   if (page === 'dashboard')  renderDashboard();
@@ -955,7 +1234,32 @@ function nav(page, scroll) {
   if (page === 'users')      renderUsers();
   if (page === 'settings')   renderSettings();
   if (page === 'services')   renderServices();
+  if (page === 'modules')    renderMyModules();
   if (scroll) document.querySelector('.main').scrollTop = 0;
+}
+
+// Renders a "module not assigned" locked state on the page element
+function renderLockedPage(page) {
+  const el = document.getElementById('page-' + page);
+  if (!el) return;
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('page-title').textContent = '🔒 Module Required';
+  el.innerHTML = `
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;text-align:center;padding:40px">
+      <div style="width:72px;height:72px;background:#f0f0ee;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:20px">
+        <i class="ti ti-lock" style="font-size:32px;color:var(--muted)"></i>
+      </div>
+      <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px">Module not assigned</div>
+      <div style="font-size:13px;color:var(--muted);max-width:380px;line-height:1.6;margin-bottom:24px">
+        The <strong>${page}</strong> module hasn't been assigned to your account yet.
+        Contact your EdosPoa admin to enable it.
+      </div>
+      <button class="btn" style="background:#00A550;color:#fff;font-size:13px;padding:10px 24px" onclick="nav('modules',1)">
+        <i class="ti ti-puzzle"></i> View My Modules
+      </button>
+    </div>`;
 }
 
 // ── PERIOD FILTER ────────────────────────────────────────
@@ -1049,9 +1353,27 @@ function renderDeptBars(deptTotals) {
 }
 
 // ── POS ──────────────────────────────────────────────────
+// Returns the departments visible to the current user.
+// Admin/Manager/Owner always see all. Cashier sees only allowedDepts (if set).
+function visibleDepts() {
+  const isRestricted = currentUser?.role === 'cashier' && currentUser?.allowedDepts;
+  if (isRestricted) return DEPTS.filter(d => currentUser.allowedDepts.includes(d.id));
+  return DEPTS;
+}
+
 function renderPOS() {
-  const deptTabs = `<div class="dept-tab ${activeDept === 'all' ? 'active' : ''}" onclick="filterDept('all',this)">All</div>`
-    + DEPTS.map(d => `<div class="dept-tab ${activeDept === d.id ? 'active' : ''}" onclick="filterDept('${d.id}',this)"><i class="ti ${d.icon}" style="font-size:12px"></i>${d.name}</div>`).join('');
+  const vd = visibleDepts();
+  // If cashier is restricted to one dept, auto-select it and skip "All" tab
+  const isRestricted = currentUser?.role === 'cashier' && currentUser?.allowedDepts;
+  if (isRestricted) {
+    // If current tab is not visible to this user, reset to first allowed dept
+    if (activeDept === 'all' || !vd.find(d => d.id === activeDept)) {
+      activeDept = vd.length ? vd[0].id : 'all';
+    }
+  }
+  const showAllTab = !isRestricted;
+  const deptTabs = (showAllTab ? `<div class="dept-tab ${activeDept === 'all' ? 'active' : ''}" onclick="filterDept('all',this)">All</div>` : '')
+    + vd.map(d => `<div class="dept-tab ${activeDept === d.id ? 'active' : ''}" onclick="filterDept('${d.id}',this)"><i class="ti ${d.icon}" style="font-size:12px"></i>${d.name}</div>`).join('');
   const clientOpts = ['<option value="">— Walk-in —</option>']
     .concat(clients.map(c => `<option value="${c.id}">${c.name}${c.phone ? ' · ' + c.phone : ''}</option>`)).join('');
 
@@ -1120,7 +1442,10 @@ function renderPOS() {
 }
 
 function buildSvcGrid(dept, q) {
+  const allowedIds = currentUser?.role === 'cashier' && currentUser?.allowedDepts
+    ? currentUser.allowedDepts : null;
   let list = dept === 'all' ? SERVICES : SERVICES.filter(s => s.dept === dept);
+  if (allowedIds) list = list.filter(s => allowedIds.includes(s.dept));
   if (q) list = list.filter(s => s.name.toLowerCase().includes(q.toLowerCase()) || s.desc.toLowerCase().includes(q.toLowerCase()));
   if (!list.length) return '<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px;grid-column:1/-1">No services found</div>';
   return list.map(s => {
@@ -1896,135 +2221,342 @@ function renderAnalytics() {
 
 function setPeriod(p) { activePeriod = p; renderAnalytics(); }
 
-// ── USERS ────────────────────────────────────────────────
-function renderUsers() {
-  const roleColors = { admin:'#C8252A', manager:'#2563eb', cashier:'#16a34a' };
-  const allPerms = ['dashboard','pos','invoices','clients','inventory','analytics','services','users','settings'];
-  document.getElementById('page-users').innerHTML = `
-    <div style="margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">
-      <span style="color:var(--muted);font-size:12px">Manage staff access. Click <strong>Permissions</strong> to customise each user's access.</span>
-      <button class="btn btn-red" onclick="openAddUserModal()"><i class="ti ti-user-plus"></i> Add User</button>
+// ── USERS — Role Matrix ────────────────────────────────────
+const ROLE_LIST = ['cashier','manager','admin','owner'];
+const ROLE_COLORS = { owner:'#7c3aed', admin:'#C8252A', manager:'#2563eb', cashier:'#16a34a' };
+const ROLE_DESC   = { owner:'Full access + user mgmt', admin:'Full access — all modules', manager:'Module-based access', cashier:'POS + Invoices + Clients' };
+
+async function renderUsers() {
+  const el = document.getElementById('page-users');
+  const canManage = ['owner','admin'].includes(currentUser?.role);
+  el.innerHTML = `<div class="card" style="text-align:center;padding:24px;color:var(--muted)">
+    <div class="spin" style="width:16px;height:16px;margin:0 auto 8px;border-top-color:#00A550"></div>Loading staff…</div>`;
+
+  let staffList = [];
+  if (useSupabase) {
+    try {
+      const { data } = await sb.from('pos_staff').select('*').eq('client_id', currentShopId).order('created_at');
+      if (data) staffList = data;
+    } catch(e) { console.warn('Staff load error:', e); }
+  }
+
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+      <div>
+        <div style="font-size:14px;font-weight:700;color:var(--text)">Staff & Role Matrix</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${staffList.length} staff · ${currentShopName||currentShopId} · click a role circle to assign it</div>
+      </div>
+      ${canManage ? `<button class="btn btn-sm" style="background:#00A550;color:#fff" onclick="openAddStaffModal()"><i class="ti ti-user-plus"></i> Add User</button>` : ''}
     </div>
-    <div class="users-grid" style="margin-bottom:16px">
-      ${USERS.map(u => `<div class="card">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px">
-          <div style="display:flex;align-items:center;gap:8px;flex:1">
-            <div style="width:38px;height:38px;border-radius:50%;background:${roleColors[u.role]||'#888'};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:#fff;flex-shrink:0">${u.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()}</div>
-            <div><div style="font-size:13px;font-weight:600">${u.name}</div><div style="font-size:10px;color:var(--muted)">@${u.username}</div></div>
-          </div>
-          <div style="display:flex;gap:4px">
-            <span class="badge ${u.role==='admin'?'badge-red':u.role==='manager'?'badge-blue':'badge-green'}">${u.role}</span>
-            ${u.id !== 'u1' ? `<button class="btn btn-outline btn-sm" onclick="deleteUser('${u.id}')" style="padding:2px 6px;font-size:10px"><i class="ti ti-trash"></i></button>` : ''}
-          </div>
-        </div>
-        <div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:10px">
-          ${allPerms.map(p => `<span class="badge ${u.perms.includes(p)?'badge-green':'badge-gray'}" style="font-size:9px;padding:1px 5px">${u.perms.includes(p)?'✓':'✗'} ${p}</span>`).join('')}
-        </div>
-        <div style="display:flex;gap:6px">
-          <button class="btn btn-outline btn-sm" style="flex:1;justify-content:center" onclick="openRoleEditor('${u.id}')"><i class="ti ti-shield-lock"></i> Permissions</button>
-          <button class="btn btn-outline btn-sm" style="flex:1;justify-content:center" onclick="openEditUserModal('${u.id}')"><i class="ti ti-edit"></i> Edit</button>
-        </div>
-      </div>`).join('')}
+
+    <!-- Role legend pills -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">
+      ${ROLE_LIST.map(r => `
+        <div style="background:#fff;border:1px solid var(--border);border-left:3px solid ${ROLE_COLORS[r]};border-radius:8px;padding:8px 10px">
+          <div style="font-size:11px;font-weight:700;color:${ROLE_COLORS[r]};text-transform:capitalize">${r}</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:1px">${ROLE_DESC[r]}</div>
+        </div>`).join('')}
     </div>
-    <div class="card">
-      <div class="card-title"><i class="ti ti-table" style="color:var(--blue)"></i> Permissions Matrix</div>
-      <div style="overflow-x:auto"><table class="table">
-        <thead><tr><th>Module</th>${USERS.map(u=>`<th>${u.name}</th>`).join('')}</tr></thead>
-        <tbody>${allPerms.map(p=>`<tr><td style="text-transform:capitalize;font-weight:500">${p}</td>${USERS.map(u=>`<td><span class="badge ${u.perms.includes(p)?'badge-green':'badge-gray'}">${u.perms.includes(p)?'✓ Yes':'✗ No'}</span></td>`).join('')}</tr>`).join('')}</tbody>
-      </table></div>
+
+    <!-- Matrix table -->
+    <div class="card" style="padding:0;overflow:auto;margin-bottom:16px">
+      <table class="table" style="min-width:700px">
+        <thead>
+          <tr style="background:#fafaf8">
+            <th style="padding:10px 14px;min-width:180px">Staff Member</th>
+            ${ROLE_LIST.map(r => `<th style="text-align:center;padding:10px 12px;white-space:nowrap">
+              <span style="color:${ROLE_COLORS[r]};font-weight:700;text-transform:capitalize">${r}</span>
+            </th>`).join('')}
+            <th style="padding:10px 12px;min-width:160px">Departments</th>
+            <th style="text-align:center;padding:10px 8px">Active</th>
+            ${canManage ? `<th style="text-align:center;padding:10px 8px">Password</th><th style="text-align:center;padding:10px 8px">Remove</th>` : ''}
+          </tr>
+        </thead>
+        <tbody>
+          ${!staffList.length ? `
+            <tr><td colspan="9" style="text-align:center;padding:32px;color:var(--muted)">
+              <i class="ti ti-users-group" style="font-size:28px;display:block;margin-bottom:8px"></i>
+              No staff yet.${canManage ? ' Click "Add User" to create the first one.' : ''}
+            </td></tr>` :
+            staffList.map(u => {
+              const isSelf = u.username === currentUser.username;
+              const canEdit = canManage && !isSelf;
+              const initials = (u.full_name||u.username||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+              const depts = (u.allowed_depts && u.allowed_depts.length) ? u.allowed_depts : null;
+              const deptsJson = JSON.stringify(depts||[]).replace(/"/g,'&quot;');
+              return `
+              <tr id="urow-${u.id}" style="transition:background .15s${isSelf?';background:#f0fdf4':''}">
+                <td style="padding:10px 14px">
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <div style="width:32px;height:32px;border-radius:50%;background:${ROLE_COLORS[u.role]||'#888'};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#fff;flex-shrink:0">${initials}</div>
+                    <div>
+                      <div style="font-size:12px;font-weight:600;color:var(--text)">${u.full_name||u.username}</div>
+                      <div style="font-size:10px;color:var(--muted)">@${u.username}${isSelf?' <span style="color:#00A550">· you</span>':''}</div>
+                    </div>
+                  </div>
+                </td>
+                ${ROLE_LIST.map(r => {
+                  const active = u.role === r;
+                  return `<td style="text-align:center;padding:8px 12px">
+                    <div id="rdot-${u.id}-${r}"
+                      title="${r}: ${ROLE_DESC[r]}"
+                      onclick="${canEdit ? `quickSetRole('${u.id}','${r}')` : ''}"
+                      style="width:26px;height:26px;border-radius:50%;border:2.5px solid ${ROLE_COLORS[r]};
+                        background:${active ? ROLE_COLORS[r] : 'transparent'};
+                        margin:auto;cursor:${canEdit ? 'pointer' : 'default'};
+                        display:flex;align-items:center;justify-content:center;transition:all .15s"
+                      onmouseenter="if(${canEdit})this.style.background='${active ? ROLE_COLORS[r] : ROLE_COLORS[r]+'33'}'"
+                      onmouseleave="if(${canEdit})this.style.background='${active ? ROLE_COLORS[r] : 'transparent'}'">
+                      ${active ? `<i class="ti ti-check" style="color:#fff;font-size:11px;pointer-events:none"></i>` : ''}
+                    </div>
+                  </td>`;
+                }).join('')}
+                <td style="padding:8px 12px">
+                  ${['admin','owner'].includes(u.role) ? `<span style="font-size:10px;color:var(--muted)">All depts</span>` : `
+                    <div style="display:flex;flex-wrap:wrap;gap:3px;align-items:center">
+                      ${depts ? depts.map(d => {
+                          const dept = DEPTS.find(x=>x.id===d);
+                          return dept ? `<span style="background:#fff;border:1px solid ${dept.color}33;border-radius:4px;padding:1px 6px;font-size:9px;color:${dept.color}"><i class="ti ${dept.icon}" style="font-size:9px"></i> ${dept.name}</span>` : '';
+                        }).join('') : `<span style="font-size:10px;color:var(--muted)">All depts</span>`}
+                      ${canEdit ? `<button id="dept-btn-${u.id}" class="btn btn-sm" style="padding:2px 6px;font-size:9px;border:1px solid var(--border)" onclick="openDeptDropdown('${u.id}','${deptsJson}')"><i class="ti ti-pencil" style="font-size:10px"></i></button>` : ''}
+                    </div>`}
+                </td>
+                <td style="text-align:center;padding:8px">
+                  ${canEdit ? `<label style="cursor:pointer">
+                    <input type="checkbox" id="act-${u.id}" ${u.is_active!==false?'checked':''}
+                      onchange="quickToggleActive('${u.id}',this.checked)"
+                      style="width:15px;height:15px;accent-color:#00A550;cursor:pointer"/>
+                  </label>` :
+                  `<span class="badge ${u.is_active!==false?'badge-green':'badge-red'}" style="font-size:9px">${u.is_active!==false?'Active':'Off'}</span>`}
+                </td>
+                ${canManage ? `
+                <td style="text-align:center;padding:8px">
+                  ${canEdit ? `<button class="btn btn-sm btn-outline" style="padding:3px 8px" title="Change password" onclick="openPwdModal('${u.id}','${(u.full_name||u.username).replace(/'/g,"\\'")}')"><i class="ti ti-key" style="font-size:12px"></i></button>` : '—'}
+                </td>
+                <td style="text-align:center;padding:8px">
+                  ${canEdit ? `<button class="btn btn-sm" style="padding:3px 8px;background:#fee2e2;color:#991b1b;border:1px solid #fecaca" onclick="deleteStaff('${u.id}','${(u.full_name||u.username).replace(/'/g,"\\'")}')"><i class="ti ti-trash" style="font-size:12px"></i></button>` : '—'}
+                </td>` : ''}
+              </tr>`;
+            }).join('')}
+        </tbody>
+      </table>
     </div>`;
 }
 
-function openAddUserModal() {
+// ── Inline role change ─────────────────────────────────────
+async function quickSetRole(userId, newRole) {
+  const row = document.getElementById('urow-' + userId);
+  if (!row) return;
+  // Optimistic UI update
+  ROLE_LIST.forEach(r => {
+    const dot = document.getElementById(`rdot-${userId}-${r}`);
+    if (!dot) return;
+    const active = r === newRole;
+    dot.style.background = active ? ROLE_COLORS[r] : 'transparent';
+    dot.innerHTML = active ? `<i class="ti ti-check" style="color:#fff;font-size:11px;pointer-events:none"></i>` : '';
+  });
+  // Update avatar colour
+  const avatar = row.querySelector('div[style*="border-radius:50%"]');
+  if (avatar) avatar.style.background = ROLE_COLORS[newRole] || '#888';
+  // Dept column: hide/show picker for admin/owner
+  const deptCell = row.cells[5];
+  if (deptCell && ['admin','owner'].includes(newRole)) {
+    deptCell.innerHTML = `<span style="font-size:10px;color:var(--muted)">All depts</span>`;
+  }
+  if (useSupabase) {
+    try {
+      const { error } = await sb.from('pos_staff').update({ role: newRole }).eq('id', userId);
+      if (error) throw error;
+    } catch(e) {
+      alert('Role update failed: ' + e.message);
+      renderUsers();
+    }
+  }
+}
+
+// ── Inline active toggle ────────────────────────────────────
+async function quickToggleActive(userId, isActive) {
+  if (!useSupabase) return;
+  try {
+    const { error } = await sb.from('pos_staff').update({ is_active: isActive }).eq('id', userId);
+    if (error) throw error;
+  } catch(e) {
+    alert('Status update failed: ' + e.message);
+    renderUsers();
+  }
+}
+
+// ── Inline dept dropdown ────────────────────────────────────
+function openDeptDropdown(userId, deptsEncoded) {
+  document.querySelectorAll('.dept-dropdown').forEach(d => d.remove());
+  const currentDepts = (() => { try { return JSON.parse(deptsEncoded.replace(/&quot;/g,'"') || '[]'); } catch{ return []; } })();
+  const btn = document.getElementById('dept-btn-' + userId);
+  if (!btn) return;
+  const rect = btn.getBoundingClientRect();
+  const dd = document.createElement('div');
+  dd.className = 'dept-dropdown';
+  dd.style.cssText = `position:fixed;z-index:600;background:#fff;border:1px solid var(--border);border-radius:10px;
+    padding:12px;box-shadow:0 8px 32px rgba(0,0,0,.18);min-width:230px;
+    top:${Math.min(rect.bottom + 4, window.innerHeight - 280)}px;
+    left:${Math.max(8, Math.min(rect.left - 80, window.innerWidth - 250))}px`;
+  dd.innerHTML = `
+    <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.5px;margin-bottom:6px">DEPARTMENT ACCESS</div>
+    <div style="font-size:10px;color:var(--muted);margin-bottom:8px">Unchecked = access to all departments</div>
+    ${DEPTS.map(d => `
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:11px;
+        padding:5px 4px;border-bottom:1px solid #f5f5f3;color:var(--text)">
+        <input type="checkbox" value="${d.id}" ${currentDepts.includes(d.id)?'checked':''}
+          style="accent-color:${d.color};width:13px;height:13px;flex-shrink:0"/>
+        <i class="ti ${d.icon}" style="color:${d.color};font-size:13px"></i> ${d.name}
+      </label>`).join('')}
+    <div style="display:flex;gap:6px;margin-top:10px">
+      <button class="btn btn-sm" style="flex:1;justify-content:center;background:#00A550;color:#fff;border:none"
+        onclick="saveDeptDropdown('${userId}',this.closest('.dept-dropdown'))">
+        <i class="ti ti-check"></i> Save</button>
+      <button class="btn btn-sm btn-outline" onclick="this.closest('.dept-dropdown').remove()">Cancel</button>
+    </div>`;
+  document.body.appendChild(dd);
+  setTimeout(() => {
+    const close = e => { if (!dd.contains(e.target) && e.target.id !== 'dept-btn-'+userId) { dd.remove(); document.removeEventListener('click', close); } };
+    document.addEventListener('click', close);
+  }, 80);
+}
+
+async function saveDeptDropdown(userId, ddEl) {
+  const checked = [...ddEl.querySelectorAll('input[type="checkbox"]:checked')].map(c => c.value);
+  const allowed_depts = checked.length ? checked : null;
+  if (!useSupabase) { ddEl.remove(); return; }
+  try {
+    const { error } = await sb.from('pos_staff').update({ allowed_depts }).eq('id', userId);
+    if (error) throw error;
+    ddEl.remove();
+    renderUsers();
+  } catch(e) { alert('Save failed: ' + e.message); }
+}
+
+// ── Password-only modal ─────────────────────────────────────
+function openPwdModal(userId, fullName) {
+  document.getElementById('edit-user-modal-body').innerHTML = `
+    <div style="display:grid;gap:10px">
+      <div style="font-size:12px;color:var(--muted)">Changing password for <strong style="color:var(--text)">${fullName}</strong></div>
+      <div><label>New Password *</label><input id="pm-pwd" type="password" placeholder="Min 6 characters"/></div>
+      <div><label>Confirm Password *</label><input id="pm-pwd2" type="password" placeholder="Repeat password"/></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:14px;border-top:1px solid var(--border);padding-top:14px">
+      <button class="btn" style="flex:1;justify-content:center;background:#00A550;color:#fff" onclick="savePwdModal('${userId}')">
+        <i class="ti ti-key"></i> Update Password</button>
+      <button class="btn btn-outline" onclick="closeModal('edit-user-modal')">Cancel</button>
+    </div>
+    <div id="pm-err" style="color:#dc2626;font-size:11px;margin-top:6px;text-align:center"></div>`;
+  openModal('edit-user-modal');
+  setTimeout(() => document.getElementById('pm-pwd')?.focus(), 100);
+}
+
+async function savePwdModal(userId) {
+  const pwd  = document.getElementById('pm-pwd')?.value;
+  const pwd2 = document.getElementById('pm-pwd2')?.value;
+  const errEl = document.getElementById('pm-err');
+  errEl.textContent = '';
+  if (!pwd || pwd.length < 6) { errEl.textContent = 'Password must be at least 6 characters.'; return; }
+  if (pwd !== pwd2) { errEl.textContent = 'Passwords do not match.'; return; }
+  try {
+    const { error } = await sb.from('pos_staff').update({ password_hash: pwd }).eq('id', userId);
+    if (error) throw error;
+    closeModal('edit-user-modal');
+  } catch(e) { errEl.textContent = 'Error: ' + e.message; }
+}
+
+// ── ADD STAFF MODAL ───────────────────────────────────────
+function toggleDeptPicker(pickerId, role) {
+  const el = document.getElementById(pickerId);
+  if (!el) return;
+  el.style.display = ['admin','owner'].includes(role) ? 'none' : '';
+}
+
+function openAddStaffModal() {
   document.getElementById('add-user-modal-body').innerHTML = `
     <div style="display:grid;gap:10px">
-      <div><label>Full Name *</label><input id="new-user-name" placeholder="e.g. John Doe"/></div>
-      <div><label>Username *</label><input id="new-user-username" placeholder="e.g. johndoe"/></div>
-      <div><label>Password *</label><input id="new-user-password" type="password" placeholder="Minimum 6 characters"/></div>
-      <div><label>Role *</label><select id="new-user-role">
-        <option value="cashier">Cashier (POS only)</option>
-        <option value="manager">Manager (POS + Reports)</option>
-        <option value="admin">Admin (Full Access)</option>
-      </select></div>
-      <div style="background:#fff8f8;border:1px solid #fee2e2;border-radius:8px;padding:10px;font-size:10px;color:var(--red)">
-        <strong>⚠️ Security:</strong> Passwords should be at least 6 characters. Share securely with the user.
+      <div><label>Full Name *</label><input id="nu-name" placeholder="e.g. Jane Wambua"/></div>
+      <div><label>Username * <span style="color:var(--muted);font-weight:400">(used to log in)</span></label>
+        <input id="nu-username" placeholder="e.g. jane.wambua" oninput="this.value=this.value.toLowerCase().replace(/[^a-z0-9._-]/g,'')"/></div>
+      <div><label>Password * <span style="color:var(--muted);font-weight:400">(min 6 chars)</span></label>
+        <input id="nu-password" type="password" placeholder="Set a secure password"/></div>
+      <div><label>Role *</label>
+        <select id="nu-role" onchange="toggleDeptPicker('nu-dept-picker',this.value)">
+          <option value="cashier">Cashier — POS, Invoices, Clients</option>
+          <option value="manager">Manager — based on assigned modules</option>
+          <option value="admin">Admin — full access</option>
+          <option value="owner">Owner — full access + user management</option>
+        </select>
+      </div>
+      <div id="nu-dept-picker" style="background:#fff8f8;border:1px solid #fecaca;border-radius:8px;padding:10px">
+        <div style="font-size:10px;font-weight:600;color:#991b1b;margin-bottom:8px;display:flex;align-items:center;gap:5px">
+          <i class="ti ti-building-store"></i> Department Access
+          <span style="font-weight:400;color:var(--muted)">(leave all unchecked = access all)</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+          ${DEPTS.map(d => `<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;color:var(--text);padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:#fff">
+            <input type="checkbox" name="nu-dept" value="${d.id}" style="accent-color:${d.color};width:13px;height:13px"/>
+            <i class="ti ${d.icon}" style="color:${d.color};font-size:13px"></i>${d.name}
+          </label>`).join('')}
+        </div>
+      </div>
+      <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:10px;font-size:10px;color:#0c4a6e;line-height:1.7">
+        <strong>Role guide:</strong><br/>
+        <strong>Owner/Admin</strong> → Can see everything, manage users and modules<br/>
+        <strong>Manager</strong> → Only sees pages where modules are assigned<br/>
+        <strong>Cashier</strong> → Fixed: POS, Invoices, Clients only — limited to assigned departments
       </div>
     </div>
     <div style="display:flex;gap:8px;margin-top:14px;border-top:1px solid var(--border);padding-top:14px">
-      <button class="btn btn-red" style="flex:1;justify-content:center" onclick="saveNewUser()"><i class="ti ti-user-plus"></i> Create User</button>
-      <button class="btn btn-outline" style="flex:1;justify-content:center" onclick="closeModal('add-user-modal')">Cancel</button>
-    </div>`;
-  openModal('add-user-modal');
-}
-
-function openEditUserModal(userId) {
-  const user = USERS.find(u => u.id === userId); if (!user) return;
-  document.getElementById('edit-user-modal-body').innerHTML = `
-    <div style="display:grid;gap:10px">
-      <div><label>Full Name *</label><input id="edit-user-name" value="${user.name}" placeholder="Full name"/></div>
-      <div><label>Username *</label><input id="edit-user-username" value="${user.username}" placeholder="Username"/></div>
-      <div><label>Password (leave blank to keep current)</label><input id="edit-user-password" type="password" placeholder="New password"/></div>
-      <div><label>Role *</label><select id="edit-user-role">
-        <option value="cashier" ${user.role==='cashier'?'selected':''}>Cashier (POS only)</option>
-        <option value="manager" ${user.role==='manager'?'selected':''}>Manager (POS + Reports)</option>
-        <option value="admin" ${user.role==='admin'?'selected':''}>Admin (Full Access)</option>
-      </select></div>
+      <button class="btn" style="flex:1;justify-content:center;background:#00A550;color:#fff" onclick="saveNewStaff()">
+        <i class="ti ti-user-plus"></i> Create User</button>
+      <button class="btn btn-outline" onclick="closeModal('add-user-modal')">Cancel</button>
     </div>
-    <div style="display:flex;gap:8px;margin-top:14px;border-top:1px solid var(--border);padding-top:14px">
-      <button class="btn btn-red" style="flex:1;justify-content:center" onclick="saveEditUser('${userId}')"><i class="ti ti-check"></i> Save Changes</button>
-      <button class="btn btn-outline" style="flex:1;justify-content:center" onclick="closeModal('edit-user-modal')">Cancel</button>
-    </div>`;
-  openModal('edit-user-modal');
+    <div id="nu-err" style="color:#dc2626;font-size:11px;margin-top:6px;text-align:center"></div>`;
+  openModal('add-user-modal');
+  setTimeout(() => document.getElementById('nu-name')?.focus(), 100);
 }
 
-function defaultPermsForRole(role) {
-  const base = ['dashboard', 'pos'];
-  if (role === 'manager') return [...base, 'invoices', 'clients', 'analytics', 'services'];
-  if (role === 'admin')   return [...base, 'invoices', 'clients', 'inventory', 'analytics', 'services', 'users', 'settings'];
-  return base;
+async function saveNewStaff() {
+  const name     = document.getElementById('nu-name')?.value.trim();
+  const username = document.getElementById('nu-username')?.value.trim();
+  const password = document.getElementById('nu-password')?.value;
+  const role     = document.getElementById('nu-role')?.value;
+  const errEl    = document.getElementById('nu-err');
+  errEl.textContent = '';
+
+  if (!name||!username||!password||!role) { errEl.textContent = 'All fields are required.'; return; }
+  if (password.length < 6) { errEl.textContent = 'Password must be at least 6 characters.'; return; }
+
+  const checkedDepts = [...document.querySelectorAll('#add-user-modal input[name="nu-dept"]:checked')].map(c => c.value);
+  const allowed_depts = checkedDepts.length ? checkedDepts : null;
+
+  const btn = document.querySelector('#add-user-modal-body .btn:first-of-type');
+  if (btn) { btn.disabled = true; btn.textContent = 'Creating…'; }
+
+  try {
+    const { error } = await sb.from('pos_staff').insert({
+      client_id: currentShopId,
+      full_name: name, username, password_hash: password,
+      role, is_active: true, allowed_depts, created_at: new Date().toISOString()
+    });
+    if (error) throw error;
+    closeModal('add-user-modal');
+    renderUsers();
+  } catch(e) {
+    errEl.textContent = e.message.includes('unique') ? 'Username already exists for this shop.' : 'Error: ' + e.message;
+    if (btn) { btn.disabled = false; btn.textContent = 'Create User'; }
+  }
 }
 
-function saveNewUser() {
-  const name     = document.getElementById('new-user-name')?.value.trim();
-  const username = document.getElementById('new-user-username')?.value.trim();
-  const password = document.getElementById('new-user-password')?.value;
-  const role     = document.getElementById('new-user-role')?.value;
-  if (!name || !username || !password || !role) { alert('All fields are required.'); return; }
-  if (password.length < 6) { alert('Password must be at least 6 characters.'); return; }
-  if (USERS.find(u => u.username === username)) { alert('Username already exists.'); return; }
-  const newUser = { id: 'u' + Date.now(), username, password, name, role,
-    color: role === 'admin' ? '#C8252A' : role === 'manager' ? '#2563eb' : '#16a34a',
-    perms: defaultPermsForRole(role) };
-  USERS.push(newUser);
-  closeModal('add-user-modal');
-  renderUsers();
-  alert('✅ User created: ' + name + ' (@' + username + ')');
-}
 
-function saveEditUser(userId) {
-  const user = USERS.find(u => u.id === userId); if (!user) return;
-  const name     = document.getElementById('edit-user-name')?.value.trim();
-  const username = document.getElementById('edit-user-username')?.value.trim();
-  const password = document.getElementById('edit-user-password')?.value;
-  const role     = document.getElementById('edit-user-role')?.value;
-  if (!name || !username || !role) { alert('All fields are required.'); return; }
-  if (password && password.length < 6) { alert('Password must be at least 6 characters.'); return; }
-  if (username !== user.username && USERS.find(u => u.username === username)) { alert('Username already taken.'); return; }
-  user.name = name; user.username = username;
-  if (password) user.password = password;
-  user.role = role;
-  user.perms = defaultPermsForRole(role);
-  closeModal('edit-user-modal');
-  renderUsers();
-  alert('✅ User updated.');
-}
-
-function deleteUser(userId) {
-  if (userId === 'u1') { alert('Cannot delete the main admin user.'); return; }
-  if (!confirm('Delete this user? This cannot be undone.')) return;
-  const idx = USERS.findIndex(u => u.id === userId);
-  if (idx !== -1) USERS.splice(idx, 1);
-  renderUsers();
+async function deleteStaff(id, name) {
+  if (!confirm(`Remove "${name}" from this shop? They will no longer be able to log in.`)) return;
+  try {
+    await sb.from('pos_staff').delete().eq('id', id);
+    renderUsers();
+  } catch(e) { alert('Error: ' + e.message); }
 }
 
 // ── SETTINGS ─────────────────────────────────────────────
@@ -2195,55 +2727,197 @@ function deleteService(id) {
   renderServices();
 }
 
-// ── ROLE EDITOR ──────────────────────────────────────────
-const ALL_PERMS = [
-  { key:'dashboard', label:'Dashboard',     desc:'View overview & stats' },
-  { key:'pos',       label:'New Sale / POS', desc:'Create sales & invoices' },
-  { key:'invoices',  label:'Invoices',       desc:'View & manage invoices' },
-  { key:'clients',   label:'Clients',        desc:'View & manage clients' },
-  { key:'inventory', label:'Inventory',      desc:'View equipment stock' },
-  { key:'analytics', label:'Analytics',      desc:'View reports & charts' },
-  { key:'services',  label:'Services',       desc:'Manage service catalogue' },
-  { key:'users',     label:'Users & Access', desc:'Manage staff & permissions' },
-  { key:'settings',  label:'Settings',       desc:'System configuration' },
-];
-
-function openRoleEditor(userId) {
-  const user = USERS.find(u => u.id === userId); if (!user) return;
-  document.getElementById('role-modal-name').textContent = user.name + ' (' + user.role + ')';
-  document.getElementById('role-modal-body').innerHTML = `
-    <div style="background:#f8f8f6;border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:14px;font-size:12px;display:flex;align-items:center;gap:10px">
-      <div style="width:36px;height:36px;border-radius:50%;background:${user.color||'#888'};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:#fff;flex-shrink:0">${user.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()}</div>
-      <div><div style="font-weight:600">${user.name}</div><div style="color:var(--muted);font-size:10px">@${user.username} · ${user.role}</div></div>
-    </div>
-    <div style="display:grid;gap:8px;margin-bottom:14px">
-      ${ALL_PERMS.map(p => `
-        <label style="display:flex;align-items:center;gap:10px;background:${user.perms.includes(p.key)?'#f0fdf4':'#fafaf8'};border:1px solid ${user.perms.includes(p.key)?'#bbf7d0':'var(--border)'};border-radius:8px;padding:10px 12px;cursor:pointer" id="perm-row-${userId}-${p.key}">
-          <input type="checkbox" ${user.perms.includes(p.key)?'checked':''} style="width:16px;height:16px;accent-color:var(--green);cursor:pointer" onchange="togglePerm('${userId}','${p.key}',this.checked)"/>
-          <div style="flex:1"><div style="font-size:12px;font-weight:600">${p.label}</div><div style="font-size:10px;color:var(--muted)">${p.desc}</div></div>
-          <span class="badge ${user.perms.includes(p.key)?'badge-green':'badge-gray'}" id="perm-badge-${userId}-${p.key}">${user.perms.includes(p.key)?'Enabled':'Disabled'}</span>
-        </label>`).join('')}
-    </div>
-    <div style="display:flex;gap:8px">
-      <button class="btn btn-red" style="flex:1;justify-content:center" onclick="closeModal('role-modal');renderUsers()"><i class="ti ti-check"></i> Done</button>
-      <button class="btn btn-outline" onclick="closeModal('role-modal')">Cancel</button>
-    </div>`;
-  openModal('role-modal');
-}
-
-function togglePerm(userId, perm, enabled) {
-  const user = USERS.find(u => u.id === userId); if (!user) return;
-  if (enabled) { if (!user.perms.includes(perm)) user.perms.push(perm); }
-  else { user.perms = user.perms.filter(p => p !== perm); }
-  const row   = document.getElementById(`perm-row-${userId}-${perm}`);
-  const badge = document.getElementById(`perm-badge-${userId}-${perm}`);
-  if (row)   { row.style.background = enabled ? '#f0fdf4' : '#fafaf8'; row.style.borderColor = enabled ? '#bbf7d0' : 'var(--border)'; }
-  if (badge) { badge.className = 'badge ' + (enabled ? 'badge-green' : 'badge-gray'); badge.textContent = enabled ? 'Enabled' : 'Disabled'; }
-}
-
 // ── MODAL HELPERS ────────────────────────────────────────
 function openModal(id)  { document.getElementById(id).classList.add('show');    }
 function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+// ── MY MODULES ────────────────────────────────────────────
+// Updated client ID for Mejason
+const MEJASON_CLIENT_ID = 'client-1778569091064';
+
+// Maps each module ID to the POS page it powers, for the "Open" button
+const MODULE_PAGE_MAP = {
+  'mod-pos-sales':     { page:'pos',       label:'Open POS Terminal'    },
+  'mod-pos-invoicing': { page:'invoices',  label:'View Invoices'        },
+  'mod-pos-clients':   { page:'clients',   label:'View Clients'         },
+  'mod-pos-dashboard': { page:'dashboard', label:'View Dashboard'       },
+  'mod-pos-payments':  { page:'invoices',  label:'Manage Payments'      },
+  'mod-pos-analytics': { page:'analytics', label:'View Analytics'       },
+  'mod-pos-inventory': { page:'inventory', label:'View Inventory'       },
+  'mod-pos-services':  { page:'services',  label:'Manage Services'      },
+  'mod-pos-mpesa':     { page:'pos',       label:'Use M-Pesa STK'       },
+  'mod-pos-email':     { page:'pos',       label:'Email Invoices'       },
+  'mod-pos-whatsapp':  { page:'pos',       label:'WhatsApp Invoices'    },
+  'mod-pos-users':     { page:'users',     label:'Manage Users'         },
+  'mod-pos-depts':     { page:'pos',       label:'View Departments'     },
+  'mod-pos-settings':  { page:'settings',  label:'Business Settings'    },
+};
+
+// Tier accent colours that match the existing POS palette
+const TIER_ACCENT = {
+  Essential: 'var(--green)',
+  Standard:  'var(--blue)',
+  Premium:   'var(--amber)',
+  Specialty: 'var(--purple)',
+};
+const TIER_BADGE = {
+  Essential: 'badge-green',
+  Standard:  'badge-blue',
+  Premium:   'badge-amber',
+  Specialty: 'badge-purple',
+};
+
+async function renderMyModules() {
+  const el = document.getElementById('page-modules');
+  const shopId = currentShopId || MEJASON_CLIENT_ID;
+  const isAdminRole = ['owner','admin'].includes(currentUser?.role);
+
+  el.innerHTML = `<div class="card" style="text-align:center;padding:24px;color:var(--muted)">
+    <div class="spin" style="width:16px;height:16px;margin:0 auto 8px;border-top-color:#00A550"></div>Loading modules…</div>`;
+
+  if (!useSupabase) {
+    el.innerHTML = `
+      <div class="card" style="padding:32px;text-align:center;color:var(--muted)">
+        <i class="ti ti-database-off" style="font-size:36px;display:block;margin-bottom:10px"></i>
+        <div style="font-weight:600;margin-bottom:6px;color:var(--text)">Supabase not connected</div>
+        <div style="font-size:11px">Connect Supabase to load assigned modules.</div>
+      </div>`;
+    return;
+  }
+
+  try {
+    // Load ALL available pos_modules (so we can show unassigned ones as locked)
+    const [{ data: allMods }, { data: subs }] = await Promise.all([
+      sb.from('pos_modules').select('*').eq('is_active', true).order('sort_order'),
+      sb.from('client_subscriptions').select('*, pos_modules(*)').eq('client_id', shopId).eq('status', 'active')
+    ]);
+
+    const assignedIds = new Set((subs||[]).map(s => s.module_id));
+    const assignedSubs = subs || [];
+
+    // Sort assigned subs
+    assignedSubs.sort((a, b) => (a.pos_modules?.sort_order??99) - (b.pos_modules?.sort_order??99));
+
+    const totalMRR = assignedSubs.reduce((s, sub) =>
+      s + Number(sub.custom_fee || sub.pos_modules?.monthly_fee || 0), 0);
+
+    // Group assigned by tier
+    const byTier = {};
+    assignedSubs.forEach(sub => {
+      const tier = sub.pos_modules?.tier || 'Other';
+      if (!byTier[tier]) byTier[tier] = [];
+      byTier[tier].push(sub);
+    });
+    const tierOrder = ['Essential','Standard','Premium','Specialty','Other'];
+
+    // Unassigned modules (locked)
+    const unassigned = (allMods||[]).filter(m => !assignedIds.has(m.id));
+
+    el.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-size:14px;font-weight:700;color:var(--text)">My Modules</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">
+            <i class="ti ti-building" style="font-size:11px"></i> ${currentShopName||shopId}
+            &nbsp;·&nbsp; <span style="color:#00A550;font-weight:600">${assignedSubs.length} active</span>
+            ${unassigned.length ? `&nbsp;·&nbsp; ${unassigned.length} locked` : ''}
+          </div>
+        </div>
+        ${assignedSubs.length ? `
+          <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px">
+            <i class="ti ti-receipt" style="color:#00A550;font-size:13px"></i>
+            Monthly: <strong style="color:var(--text)">${fmt(totalMRR)}/mo</strong>
+          </div>` : ''}
+      </div>
+
+      ${!assignedSubs.length ? `
+        <!-- NO MODULES STATE -->
+        <div style="background:linear-gradient(135deg,#1e2a1e,#2a3a2a);border-radius:14px;padding:32px;text-align:center;margin-bottom:20px">
+          <div style="font-size:42px;margin-bottom:12px">🔒</div>
+          <div style="font-size:16px;font-weight:700;color:#fff;margin-bottom:8px">No modules assigned yet</div>
+          <div style="font-size:12px;color:#7a9a7a;margin-bottom:16px;max-width:380px;margin-left:auto;margin-right:auto;line-height:1.6">
+            Your EdosPoa admin needs to assign modules to unlock features. Until then, only the Modules page is accessible.
+          </div>
+          <div style="display:inline-block;background:#00A550;color:#fff;border-radius:8px;padding:8px 18px;font-size:12px;font-weight:600">
+            Contact your EdosPoa admin to get started
+          </div>
+        </div>` : `
+        <!-- ASSIGNED MODULES -->
+        ${tierOrder.filter(t => byTier[t]?.length).map(tier => `
+          <div style="margin-bottom:18px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+              <div style="width:10px;height:10px;border-radius:50%;background:${TIER_ACCENT[tier]||'#888'}"></div>
+              <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">${tier} Tier</span>
+              <span style="font-size:10px;color:var(--muted)">${byTier[tier].length} module${byTier[tier].length!==1?'s':''}</span>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px">
+              ${byTier[tier].map(sub => {
+                const mod  = sub.pos_modules; if (!mod) return '';
+                const pages = resolveModulePages(mod);
+                const page = pages[0] || null;
+                const fee  = Number(sub.custom_fee || mod.monthly_fee || 0);
+                const accent = TIER_ACCENT[mod.tier]||'#888';
+                const badge  = TIER_BADGE[mod.tier] ||'badge-gray';
+                const hasAccess = page && currentUser?.perms.includes(page);
+                // Human-readable action label for the page
+                const pageLabels = {pos:'Open POS',dashboard:'Dashboard',invoices:'Invoices',clients:'Clients',inventory:'Inventory',analytics:'Analytics',services:'Services',users:'Users',settings:'Settings'};
+                return `<div class="card" style="padding:12px;border-top:3px solid ${accent};display:flex;flex-direction:column;gap:8px">
+                  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px">
+                    <div style="font-size:12px;font-weight:700;color:var(--text)">${mod.name}</div>
+                    <span class="badge ${badge}" style="white-space:nowrap;flex-shrink:0;font-size:9px">${mod.tier}</span>
+                  </div>
+                  <div style="font-size:10px;color:var(--muted);line-height:1.5;flex:1">${mod.description||mod.category||''}</div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">
+                    <span style="font-size:10px;color:var(--muted);display:flex;align-items:center;gap:4px">
+                      <span class="badge badge-green" style="font-size:9px">● Active</span>&nbsp;${fmt(fee)}/mo
+                      ${pages.length ? `<span style="color:var(--muted)">→ ${pages.join(', ')}</span>` : ''}
+                    </span>
+                    ${hasAccess ? `<button class="btn btn-sm" style="background:#00A550;color:#fff;font-size:10px;padding:4px 9px" onclick="nav('${page}',1)">
+                      <i class="ti ti-arrow-right" style="font-size:11px"></i> ${pageLabels[page]||page}</button>` : ''}
+                  </div>
+                </div>`;
+              }).join('')}
+            </div>
+          </div>`).join('')}`}
+
+      <!-- LOCKED / UNASSIGNED MODULES -->
+      ${unassigned.length ? `
+        <div style="margin-top:20px;border-top:2px dashed var(--border);padding-top:16px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+            <i class="ti ti-lock" style="color:var(--muted)"></i>
+            <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">
+              ${assignedSubs.length ? 'Available to unlock' : 'All available modules'} (${unassigned.length})
+            </span>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px">
+            ${unassigned.map(m => {
+              const badge = TIER_BADGE[m.tier]||'badge-gray';
+              return `<div style="background:#f8f8f6;border:1px dashed var(--border);border-radius:10px;padding:10px;opacity:.7">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;margin-bottom:5px">
+                  <div style="font-size:11px;font-weight:600;color:var(--muted)">${m.name}</div>
+                  <span class="badge ${badge}" style="font-size:9px;opacity:.7">${m.tier}</span>
+                </div>
+                <div style="font-size:10px;color:var(--muted);line-height:1.4;margin-bottom:6px">${m.description||m.category||''}</div>
+                <div style="font-size:10px;color:var(--muted)">
+                  <i class="ti ti-lock" style="font-size:10px"></i> ${fmt(m.monthly_fee)}/mo · Not assigned
+                </div>
+              </div>`;
+            }).join('')}
+          </div>
+          <div style="margin-top:10px;font-size:11px;color:var(--muted);text-align:center">
+            Contact your EdosPoa admin to unlock additional modules
+          </div>
+        </div>` : ''}`;
+
+  } catch(e) {
+    el.innerHTML = `<div class="card" style="padding:24px;text-align:center;color:var(--muted)">
+      <i class="ti ti-alert-circle" style="font-size:32px;display:block;margin-bottom:8px;color:var(--red)"></i>
+      <div style="font-weight:600;color:var(--text);margin-bottom:4px">Error loading modules</div>
+      <div style="font-size:11px">${e.message}</div>
+    </div>`;
+  }
+}
+
 </script>
 </body>
 </html>

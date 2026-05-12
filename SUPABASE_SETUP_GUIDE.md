@@ -20,8 +20,8 @@ Once your project is created:
 1. Go to **Settings** (bottom left)
 2. Click **API**
 3. Copy these two values:
-   - **Project URL** (example: `https://abcdefg123456.supabase.co`)
-   - **Anon public key** (example: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...`)
+   - **Project URL** (example: `https://kqpltwrhzbjfyxkttwzh.supabase.co/rest/v1/`)
+   - **Anon public key** (example: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtxcGx0d3JoemJqZnl4a3R0d3poIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzNjM0NTYsImV4cCI6MjA5MzkzOTQ1Nn0.rR1t4jtXTCCfooTuczSU-CGNxQKAhgXvFJssatn3a6Y`)
 
 ---
 
