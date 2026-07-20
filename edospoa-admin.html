@@ -92,6 +92,10 @@ tr:hover td{background:#faf8f4}
 .plan-premium{background:rgba(245,158,11,.15);color:#f59e0b;font-size:.72rem;font-weight:600;padding:.2rem .6rem;border-radius:6px}
 .plan-trial{background:var(--purple-dim);color:var(--purple);font-size:.72rem;font-weight:600;padding:.2rem .6rem;border-radius:6px}
 
+/* Owner-only visibility control */
+.owner-only{display:block}
+.owner-only.hidden{display:none}
+
 .tier-e{background:rgba(0,165,80,.15);color:var(--green);font-size:.65rem;font-weight:800;padding:.15rem .5rem;border-radius:4px;border:1px solid rgba(0,165,80,.2)}
 .tier-s{background:rgba(59,130,246,.15);color:#3b82f6;font-size:.65rem;font-weight:800;padding:.15rem .5rem;border-radius:4px;border:1px solid rgba(59,130,246,.2)}
 .tier-p{background:rgba(245,158,11,.15);color:#f59e0b;font-size:.65rem;font-weight:800;padding:.15rem .5rem;border-radius:4px;border:1px solid rgba(245,158,11,.2)}
@@ -197,12 +201,41 @@ tr:hover td{background:#faf8f4}
 .toast.warning{border-left:3px solid var(--amber)}
 
 @media(max-width:900px){
-  .stats-row{grid-template-columns:1fr 1fr}
+  .stats-row{grid-template-columns:1fr 1fr !important}
   .sidebar{width:60px}
   .brand-name,.nav-item span,.online-badge span{display:none}
   .brand{justify-content:center;padding:1rem}
   .nav-item{justify-content:center;padding:.65rem}
   .modules-layout{grid-template-columns:1fr}
+  .search-box{width:160px}
+}
+@media(max-width:640px){
+  body{flex-direction:column}
+  .sidebar{width:100%;height:56px;min-height:unset;position:fixed;bottom:0;top:auto;flex-direction:row;border-right:none;border-top:1px solid rgba(0,0,0,.1);z-index:50;background:#f5f2eb}
+  .brand{display:none}
+  .sidebar-footer{display:none}
+  nav{flex-direction:row;padding:.2rem .3rem;overflow-x:auto;justify-content:space-around;width:100%;gap:0;flex:unset}
+  .nav-item{flex-direction:column;gap:.1rem;padding:.35rem .35rem;justify-content:center;flex:1;min-width:0;width:auto}
+  .nav-item .icon{font-size:1rem;width:auto}
+  .nav-item span{display:block !important;font-size:.55rem;line-height:1;letter-spacing:0}
+  .main{margin-bottom:58px}
+  .topbar{padding:.65rem 1rem;gap:.5rem}
+  .topbar-right{width:100%;flex:1 1 100%}
+  .search-box{width:100% !important}
+  .page-title{font-size:1rem}
+  .content{padding:.9rem}
+  .stats-row{grid-template-columns:1fr 1fr !important}
+  .stat-value{font-size:1.5rem}
+  .stat-card{padding:.9rem 1rem}
+  .dash-grid{grid-template-columns:1fr !important}
+  #seedPreview{grid-template-columns:1fr 1fr !important}
+  .form-row{grid-template-columns:1fr}
+  .modal{max-width:calc(100% - 1.5rem);padding:1.4rem;border-radius:14px}
+  .toast{bottom:68px;right:1rem;left:1rem}
+  .table-header{flex-direction:column;align-items:flex-start}
+  .seed-banner{flex-direction:column}
+  .mod-lib-search{width:110px}
+  .client-picker{min-width:140px}
 }
 </style>
 </head>
@@ -246,11 +279,11 @@ tr:hover td{background:#faf8f4}
         <div class="stat-card red"><div class="stat-icon">⏸</div><div class="stat-label">Suspended</div><div class="stat-value" id="stat-suspended">—</div><div class="stat-sub">Overdue or paused</div></div>
       </div>
       <div class="stats-row" style="grid-template-columns:repeat(3,1fr);margin-bottom:1.4rem">
-        <div class="stat-card blue"><div class="stat-icon">💰</div><div class="stat-label">Monthly MRR</div><div class="stat-value" id="dash-mrr">—</div><div class="stat-sub">Active subscriptions</div></div>
+        <div class="stat-card blue owner-only"><div class="stat-icon">💰</div><div class="stat-label">Monthly MRR</div><div class="stat-value" id="dash-mrr">—</div><div class="stat-sub">Active subscriptions</div></div>
         <div class="stat-card green"><div class="stat-icon">🧩</div><div class="stat-label">Active Subscriptions</div><div class="stat-value" id="dash-subs">—</div><div class="stat-sub">Module assignments</div></div>
         <div class="stat-card amber"><div class="stat-icon">📊</div><div class="stat-label">Avg per Client</div><div class="stat-value" id="dash-avg">—</div><div class="stat-sub">Revenue per client</div></div>
       </div>
-      <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:1rem;margin-bottom:1.4rem">
+      <div class="dash-grid" style="display:grid;grid-template-columns:1.5fr 1fr;gap:1rem;margin-bottom:1.4rem">
         <div class="table-card">
           <div class="table-header"><span class="table-title">Recent Clients</span><button class="btn btn-outline btn-sm" onclick="navTo('clients')">View all →</button></div>
           <div id="recentClientsTable"><div class="loading"><div class="spinner"></div>Loading…</div></div>
@@ -296,7 +329,7 @@ tr:hover td{background:#faf8f4}
       <div class="stats-row" style="grid-template-columns:repeat(3,1fr);margin-bottom:1.2rem">
         <div class="stat-card blue"><div class="stat-icon">🧩</div><div class="stat-label">Total Modules</div><div class="stat-value" id="mod-total">—</div></div>
         <div class="stat-card green"><div class="stat-icon">🔗</div><div class="stat-label">Active Subscriptions</div><div class="stat-value" id="mod-subs">—</div></div>
-        <div class="stat-card amber"><div class="stat-icon">💰</div><div class="stat-label">Monthly MRR (KES)</div><div class="stat-value" id="mod-mrr">—</div></div>
+        <div class="stat-card blue owner-only"><div class="stat-icon">💰</div><div class="stat-label">Monthly MRR (KES)</div><div class="stat-value" id="mod-mrr">—</div></div>
       </div>
 
       <div class="modules-layout">
@@ -308,10 +341,10 @@ tr:hover td{background:#faf8f4}
           </div>
           <div class="tier-tabs" id="tierTabs">
             <button class="tier-tab active" data-tier="All" onclick="setTierFilter('All',this)">All</button>
-            <button class="tier-tab" data-tier="Essential" onclick="setTierFilter('Essential',this)">Essential</button>
-            <button class="tier-tab" data-tier="Standard" onclick="setTierFilter('Standard',this)">Standard</button>
-            <button class="tier-tab" data-tier="Premium" onclick="setTierFilter('Premium',this)">Premium</button>
-            <button class="tier-tab" data-tier="Specialty" onclick="setTierFilter('Specialty',this)">Specialty</button>
+            <button class="tier-tab" data-tier="ESSENTIAL" onclick="setTierFilter('ESSENTIAL',this)">Essential</button>
+            <button class="tier-tab" data-tier="STANDARD" onclick="setTierFilter('STANDARD',this)">Standard</button>
+            <button class="tier-tab" data-tier="PREMIUM" onclick="setTierFilter('PREMIUM',this)">Premium</button>
+            <button class="tier-tab" data-tier="SPECIALTY" onclick="setTierFilter('SPECIALTY',this)">Specialty</button>
           </div>
           <div class="mod-list" id="modList"><div class="loading"><div class="spinner"></div>Loading…</div></div>
           <div style="padding:.6rem 1rem;border-top:1px solid var(--border);font-size:.75rem;color:var(--muted)">
@@ -330,7 +363,7 @@ tr:hover td{background:#faf8f4}
           <div class="csp-body" id="cspBody">
             <div class="csp-empty">Select a client above to manage their modules</div>
           </div>
-          <div class="mrr-bar" id="mrrBar" style="display:none">
+          <div class="mrr-bar owner-only" id="mrrBar" style="display:none">
             <span class="mrr-label">Monthly subscription total</span>
             <span class="mrr-value" id="mrrValue">KES 0</span>
           </div>
@@ -374,7 +407,7 @@ tr:hover td{background:#faf8f4}
         <div style="padding:1.4rem">
           <div class="seed-banner">
             <div class="seed-info">
-              <strong>One-click setup</strong> — seeds all 12 Mejason POS modules into <code>pos_modules</code>
+              <strong>One-click setup</strong> — seeds all 15 Mejason POS modules into <code>pos_modules</code>
               and creates <strong>Mejason Media Production</strong> as a Premium client with all modules assigned.
             </div>
             <div class="seed-actions">
@@ -522,6 +555,7 @@ let allSubs      = [];
 let tierFilter   = 'All';
 let selectedMods = new Set();
 let activeClientId = '';
+let isOwner      = false;  // Track if current user is owner
 
 // ── MEJASON POS MODULE DEFINITIONS ───────────────────────────
 // Categorized from Mejason POS source into 4 tiers
@@ -531,7 +565,7 @@ const MEJASON_MODULES = [
     id: 'mod-pos-sales',
     name: 'POS Sales Terminal',
     category: 'Sales',
-    tier: 'Essential',
+    tier: 'ESSENTIAL',
     monthly_fee: 1500,
     description: 'Full cart-based POS with service catalogue, custom items, qty control, discounts, and multi-dept filtering.',
     is_active: true,
@@ -541,7 +575,7 @@ const MEJASON_MODULES = [
     id: 'mod-pos-invoicing',
     name: 'Invoicing & Receipts',
     category: 'Finance',
-    tier: 'Essential',
+    tier: 'ESSENTIAL',
     monthly_fee: 1000,
     description: 'PDF invoice + thermal receipt generation, download, and print. Includes client bill-to details and payment notes.',
     is_active: true,
@@ -551,7 +585,7 @@ const MEJASON_MODULES = [
     id: 'mod-pos-clients',
     name: 'Client Records',
     category: 'CRM',
-    tier: 'Essential',
+    tier: 'ESSENTIAL',
     monthly_fee: 500,
     description: 'Client database with phone, email, event type, notes. Auto-create on first sale. Search and history tracking.',
     is_active: true,
@@ -561,7 +595,7 @@ const MEJASON_MODULES = [
     id: 'mod-pos-dashboard',
     name: 'Business Dashboard',
     category: 'Reporting',
-    tier: 'Essential',
+    tier: 'ESSENTIAL',
     monthly_fee: 500,
     description: 'Real-time stats: total billed, collected, outstanding, today\'s sales. Recent transactions and dept revenue bars.',
     is_active: true,
@@ -573,7 +607,7 @@ const MEJASON_MODULES = [
     id: 'mod-pos-payments',
     name: 'Credit & Payments',
     category: 'Finance',
-    tier: 'Standard',
+    tier: 'STANDARD',
     monthly_fee: 1000,
     description: 'Credit sales, partial payment recording, balance tracking, payment history per invoice, mark-fully-paid.',
     is_active: true,
@@ -583,7 +617,7 @@ const MEJASON_MODULES = [
     id: 'mod-pos-analytics',
     name: 'Analytics & Reports',
     category: 'Reporting',
-    tier: 'Standard',
+    tier: 'STANDARD',
     monthly_fee: 1500,
     description: 'Period-based revenue charts (day/week/month/quarter/year), dept breakdown, top clients, payment method split.',
     is_active: true,
@@ -593,7 +627,7 @@ const MEJASON_MODULES = [
     id: 'mod-pos-inventory',
     name: 'Equipment Inventory',
     category: 'Operations',
-    tier: 'Standard',
+    tier: 'STANDARD',
     monthly_fee: 800,
     description: 'Stock tracking for cameras, drones, lights, flash disks, photobooks. Availability and utilization bars.',
     is_active: true,
@@ -603,11 +637,21 @@ const MEJASON_MODULES = [
     id: 'mod-pos-services',
     name: 'Service Catalogue Manager',
     category: 'Operations',
-    tier: 'Standard',
+    tier: 'STANDARD',
     monthly_fee: 700,
     description: 'Add, edit, delete services across 8 departments. Dept filter, bulk pricing, search. Live sync to POS terminal.',
     is_active: true,
     sort_order: 8
+  },
+  {
+    id: 'mod-pos-expenses',
+    name: 'Expenses & Profitability',
+    category: 'Finance',
+    tier: 'STANDARD',
+    monthly_fee: 900,
+    description: 'Record operating expenses and Cost-of-Goods entries by category. Unlocks Gross Profit & Net Profit cards on dashboard and analytics, plus expense breakdown in CSV/Excel/PDF exports.',
+    is_active: true,
+    sort_order: 9
   },
 
   // ─── PREMIUM (automation + integrations) ──────────────────
@@ -615,41 +659,41 @@ const MEJASON_MODULES = [
     id: 'mod-pos-mpesa',
     name: 'M-Pesa STK Push',
     category: 'Payments',
-    tier: 'Premium',
+    tier: 'PREMIUM',
     monthly_fee: 2000,
     description: 'Safaricom Daraja STK push integration. Paybill + till support, real-time PIN confirmation, sandbox+live modes.',
     is_active: true,
-    sort_order: 9
+    sort_order: 10
   },
   {
     id: 'mod-pos-email',
     name: 'Email Invoice Delivery',
     category: 'Communications',
-    tier: 'Premium',
+    tier: 'PREMIUM',
     monthly_fee: 1500,
     description: 'Auto-generate PDF and email invoice to client on checkout. html2pdf rendering, Netlify function backend.',
     is_active: true,
-    sort_order: 10
+    sort_order: 11
   },
   {
     id: 'mod-pos-whatsapp',
     name: 'WhatsApp Invoice Delivery',
     category: 'Communications',
-    tier: 'Premium',
+    tier: 'PREMIUM',
     monthly_fee: 1500,
     description: 'Send PDF invoice via WhatsApp Business API with fallback to WA Web link. Auto-formatted message template.',
     is_active: true,
-    sort_order: 11
+    sort_order: 12
   },
   {
     id: 'mod-pos-users',
     name: 'Staff Users & Access Control',
     category: 'Administration',
-    tier: 'Premium',
+    tier: 'PREMIUM',
     monthly_fee: 1000,
     description: 'Multi-user login (admin/manager/cashier), granular permission matrix, add/edit/delete staff, role editor.',
     is_active: true,
-    sort_order: 12
+    sort_order: 13
   },
 
   // ─── SPECIALTY (media-specific add-ons) ───────────────────
@@ -657,21 +701,21 @@ const MEJASON_MODULES = [
     id: 'mod-pos-depts',
     name: 'Media Department Setup',
     category: 'Configuration',
-    tier: 'Specialty',
+    tier: 'SPECIALTY',
     monthly_fee: 500,
     description: 'Pre-configured 8 media departments: Wedding, Traditional, Graduation, Corporate, Studio, Editing, Equipment, Passport/ID.',
     is_active: true,
-    sort_order: 13
+    sort_order: 14
   },
   {
     id: 'mod-pos-settings',
     name: 'Business Settings & Branding',
     category: 'Configuration',
-    tier: 'Specialty',
+    tier: 'SPECIALTY',
     monthly_fee: 500,
     description: 'Business info, KCB bank details, M-Pesa paybill/till/account config, social media links, invoice footer branding.',
     is_active: true,
-    sort_order: 14
+    sort_order: 15
   }
 ];
 
@@ -692,8 +736,8 @@ const fmt   = n => 'KES ' + Number(n).toLocaleString('en-KE',{minimumFractionDig
 const fmtK  = n => n>=1e6?(n/1e6).toFixed(1)+'M':n>=1000?(n/1000).toFixed(1)+'K':String(Math.round(n));
 const fdate = d => d ? new Date(d).toLocaleDateString('en-KE',{day:'2-digit',month:'short',year:'numeric'}) : '—';
 const esc   = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-const TIER_CLS = {Essential:'tier-e',Standard:'tier-s',Premium:'tier-p',Specialty:'tier-x'};
-const PLAN_TIERS = {basic:['Essential'],standard:['Essential','Standard'],premium:['Essential','Standard','Premium'],trial:['Essential']};
+const TIER_CLS = {ESSENTIAL:'tier-e',STANDARD:'tier-s',PREMIUM:'tier-p',SPECIALTY:'tier-x'};
+const PLAN_TIERS = {basic:['ESSENTIAL'],standard:['ESSENTIAL','STANDARD'],premium:['ESSENTIAL','STANDARD','PREMIUM'],trial:['ESSENTIAL']};
 
 // ── TOAST ─────────────────────────────────────────────────────
 let _tt;
@@ -744,8 +788,44 @@ function statusBadge(s){const m={active:'green',trial:'amber',suspended:'red',in
 function invoiceBadge(s){const m={paid:'green',pending:'amber',overdue:'red',cancelled:'muted'};return `<span class="badge badge-${m[s]||'muted'}">${s}</span>`;}
 function planChip(p){const cls={basic:'plan-basic',standard:'plan-standard',premium:'plan-premium',trial:'plan-trial'};return `<span class="${cls[p]||'plan-basic'}">${(p||'basic').charAt(0).toUpperCase()+(p||'basic').slice(1)}</span>`;}
 
+// ── OWNER AUTHORIZATION ───────────────────────────────────────
+async function checkOwnerStatus(){
+  try {
+    const { data: { user } } = await SB.auth.getUser();
+    if(!user) return false;
+    
+    // Check if user is owner in pos_staff table
+    const { data: staff } = await SB.from('pos_staff')
+      .select('role')
+      .eq('user_id', user.id)
+      .single();
+    
+    isOwner = staff?.role === 'owner';
+    updateMRRVisibility();
+    return isOwner;
+  } catch(e) {
+    console.log('Owner check: using guest access');
+    isOwner = false;
+    updateMRRVisibility();
+    return false;
+  }
+}
+
+function updateMRRVisibility(){
+  const mrrElements = document.querySelectorAll('.stat-card.blue');
+  mrrElements.forEach(el => {
+    if(el.querySelector('#dash-mrr') || el.querySelector('#mod-mrr')) {
+      el.classList.toggle('hidden', !isOwner);
+    }
+  });
+  const mrrBar = document.getElementById('mrrBar');
+  if(mrrBar) mrrBar.classList.toggle('hidden', !isOwner);
+}
+
 // ── LOAD ALL DATA ─────────────────────────────────────────────
 async function init(){
+  await checkOwnerStatus();
+  
   const [cr,mr,sr,ir]=await Promise.all([
     SB.from('clients').select('*').order('created_at',{ascending:false}),
     SB.from('pos_modules').select('*').order('sort_order').order('tier').order('name'),
@@ -948,7 +1028,7 @@ function renderModLib(){
       <div class="mod-item-check">${isSel?'✓':''}</div>
       <div class="mod-item-info">
         <div class="mod-item-name">${esc(m.name)}</div>
-        <div class="mod-item-fee">${fmt(m.monthly_fee)}/mo · <span class="${TIER_CLS[m.tier]||'tier-e'}">${m.tier}</span>${alreadyAssigned?' · <span style="color:var(--muted)">assigned</span>':''}</div>
+        <div class="mod-item-fee">${fmt(m.monthly_fee)}/mo · <span class="${TIER_CLS[m.tier]||'tier-e'}">${m.tier.charAt(0)+m.tier.slice(1).toLowerCase()}</span>${alreadyAssigned?' · <span style="color:var(--muted)">assigned</span>':''}</div>
         <button class="btn btn-outline btn-xs" style="margin-top:5px;font-size:.68rem"
           onclick="event.stopPropagation();openModuleScriptEditor('${m.id}','${esc(m.name)}')">
           ✏️ Edit Script
@@ -1084,7 +1164,7 @@ async function assignSelected(){
 }
 
 async function applyPreset(clientId,plan){
-  const tiers=PLAN_TIERS[plan]||['Essential'];
+  const tiers=PLAN_TIERS[plan]||['ESSENTIAL'];
   const client=allClients.find(c=>c.id===clientId);
   const existingIds=new Set(allSubs.filter(s=>s.client_id===clientId).map(s=>s.module_id));
   const toAdd=allModules.filter(m=>m.is_active&&tiers.includes(m.tier)&&!existingIds.has(m.id));
